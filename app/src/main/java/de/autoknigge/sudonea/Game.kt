@@ -9,7 +9,7 @@ import androidx.compose.runtime.setValue
 class HintInfo(val text: String, val cells: List<Int>, val cell: Int?, val digit: Int, val elim: List<Pair<Int, Int>>)
 
 /** Ein laufendes Spiel: Zahlen, Notizen, Rückgängig, Tipps. */
-class GameState(val grid: IntArray, val solution: IntArray, val level: Level, val daily: String?) {
+class GameState(val grid: IntArray, val solution: IntArray, val level: Level, val daily: String?, val number: Int = 0) {
     val vals = mutableStateListOf<Int>().apply { addAll(grid.toList()) }
     val notes = mutableStateListOf<Int>().apply { repeat(81) { add(0) } }
     var sel by mutableIntStateOf(-1)
@@ -19,23 +19,60 @@ class GameState(val grid: IntArray, val solution: IntArray, val level: Level, va
     var hints by mutableIntStateOf(0)
     var won by mutableStateOf(false)
     var hint by mutableStateOf<HintInfo?>(null)
+    var paused by mutableStateOf(false)
+    /** Hervorgehobene Ziffer (alle gleichen Zahlen und Notizen leuchten) und Ziffer-zuerst-Modus. */
+    var hd by mutableIntStateOf(0)
+    var digitFirst by mutableStateOf(false)
     private val undo = ArrayList<Pair<IntArray, IntArray>>()
+    private val redo = ArrayList<Pair<IntArray, IntArray>>()
+    val canUndo get() = undo.isNotEmpty()
+    val canRedo get() = redo.isNotEmpty()
 
     fun isGiven(i: Int) = grid[i] != 0
     fun isWrong(i: Int) = vals[i] != 0 && vals[i] != solution[i]
     fun count(d: Int) = vals.count { it == d }
 
     private fun push() {
+        redo.clear()
         undo.add(vals.toIntArray() to notes.toIntArray())
         if (undo.size > 200) undo.removeAt(0)
     }
 
     fun undo() {
         if (won || undo.isEmpty()) return
+        redo.add(vals.toIntArray() to notes.toIntArray())
         val (v, n) = undo.removeAt(undo.size - 1)
         for (i in 0 until 81) { vals[i] = v[i]; notes[i] = n[i] }
         hint = null
     }
+
+    fun redo() {
+        if (won || redo.isEmpty()) return
+        undo.add(vals.toIntArray() to notes.toIntArray())
+        val (v, n) = redo.removeAt(redo.size - 1)
+        for (i in 0 until 81) { vals[i] = v[i]; notes[i] = n[i] }
+        hint = null
+    }
+
+    /** Tippen auf ein Feld: im Ziffer-zuerst-Modus wird die gewählte Zahl dort eingetragen. */
+    fun tapCell(i: Int) {
+        if (paused || won) return
+        if (digitFirst && hd != 0 && !isGiven(i)) { sel = i; enter(hd); return }
+        sel = i
+        digitFirst = false
+        hd = vals[i]
+    }
+
+    /** Zifferntaste: trägt ein, wenn ein Feld gewählt ist, sonst Ziffer-zuerst-Modus. */
+    fun tapDigit(d: Int) {
+        if (paused || won) return
+        if (digitFirst && hd == d) { digitFirst = false; hd = 0; return }
+        if (sel >= 0 && !isGiven(sel) && !digitFirst) { enter(d); hd = d; return }
+        hd = d; digitFirst = true; sel = -1
+    }
+
+    /** Prüft die Zahlen: Anzahl falscher Felder. */
+    fun wrongCount() = (0 until 81).count { isWrong(it) }
 
     fun enter(d: Int) {
         val s = sel
@@ -113,8 +150,8 @@ class GameState(val grid: IntArray, val solution: IntArray, val level: Level, va
     }
 
     fun encode(): String = listOf(
-        "v1", level.name, daily ?: "-", seconds, mistakes, hints,
-        grid.joinToString(""), solution.joinToString(""), vals.joinToString(""), notes.joinToString(",")
+        "v2", level.name, daily ?: "-", seconds, mistakes, hints,
+        grid.joinToString(""), solution.joinToString(""), vals.joinToString(""), notes.joinToString(","), number
     ).joinToString("|")
 
     companion object {
@@ -122,7 +159,7 @@ class GameState(val grid: IntArray, val solution: IntArray, val level: Level, va
             val a = s.split("|")
             val g = GameState(
                 a[6].map { it - '0' }.toIntArray(), a[7].map { it - '0' }.toIntArray(),
-                Level.valueOf(a[1]), a[2].takeIf { it != "-" }
+                Level.valueOf(a[1]), a[2].takeIf { it != "-" }, a.getOrNull(10)?.toIntOrNull() ?: 0
             )
             g.seconds = a[3].toInt(); g.mistakes = a[4].toInt(); g.hints = a[5].toInt()
             a[8].forEachIndexed { i, ch -> g.vals[i] = ch - '0' }
@@ -130,6 +167,6 @@ class GameState(val grid: IntArray, val solution: IntArray, val level: Level, va
             g
         } catch (e: Exception) { null }
 
-        fun of(p: Sudoku.Puzzle, daily: String?) = GameState(p.grid, p.solution, p.level, daily)
+        fun of(p: Sudoku.Puzzle, daily: String?, number: Int = 0) = GameState(p.grid, p.solution, p.level, daily, number)
     }
 }
