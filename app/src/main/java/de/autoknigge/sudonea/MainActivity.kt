@@ -22,9 +22,9 @@ class MainActivity : ComponentActivity() {
         val crash = sp.getString("trace", null)
         setContent {
             SudoneaTheme {
-                var c by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(crash) }
-                val t = c
-                if (t != null) CrashScreen(t) { sp.edit().remove("trace").commit(); c = null }
+                val c = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(crash) }
+                val t = c.value
+                if (t != null) CrashScreen(t) { sp.edit().remove("trace").commit(); c.value = null }
                 else Root(store, ads)
             }
         }
