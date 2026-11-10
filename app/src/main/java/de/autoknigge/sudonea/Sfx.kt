@@ -2,13 +2,12 @@ package de.autoknigge.sudonea
 
 import android.content.Context
 import android.media.SoundPool
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 
 /** Tastentöne, an und aus im Menü (gemerkt). */
 object Sfx {
-    var on by mutableStateOf(true)
+    private val onState = mutableStateOf(true)
+    val on: Boolean get() = onState.value
     private var pool: SoundPool? = null
     private var id = 0
     private var prefs: android.content.SharedPreferences? = null
@@ -16,12 +15,12 @@ object Sfx {
     fun init(ctx: Context) {
         if (pool != null) return
         prefs = ctx.applicationContext.getSharedPreferences("sudonea", Context.MODE_PRIVATE)
-        on = prefs?.getBoolean("sfx", true) ?: true
+        onState.value = prefs?.getBoolean("sfx", true) ?: true
         pool = SoundPool.Builder().setMaxStreams(3).build().also { id = it.load(ctx.applicationContext, R.raw.click, 1) }
     }
 
     fun set(v: Boolean) {
-        on = v
+        onState.value = v
         prefs?.edit()?.putBoolean("sfx", v)?.apply()
     }
 

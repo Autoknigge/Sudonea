@@ -85,7 +85,10 @@ object Palettes {
             tiles = true, boardBg = Color(0xFF4A2E1B), tileGiven = Color(0xFFF0D9A9), tileEmpty = Color(0xFFE6CB96), userInk = Color(0xFF9A6B3C)
         )
     )
-    var cur by mutableStateOf(all[0])
+    private val curState = mutableStateOf(all[0])
+    var cur: Pal
+        get() = curState.value
+        set(v) { curState.value = v }
 }
 
 val Forest: Color get() = Palettes.cur.bg
