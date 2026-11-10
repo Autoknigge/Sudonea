@@ -118,6 +118,7 @@ fun fmtTime(s: Int) = "%d:%02d".format(s / 60, s % 60)
 fun Root(store: Store, ads: AdsController) {
     var screen by remember { mutableStateOf<Screen>(Screen.Home) }
     var busy by remember { mutableStateOf(false) }
+    var musicOpen by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val view = LocalView.current
     val light = Palettes.cur.light
@@ -154,15 +155,16 @@ fun Root(store: Store, ads: AdsController) {
     Column(Modifier.fillMaxSize().background(Forest).statusBarsPadding()) {
         Box(Modifier.weight(1f)) {
             when (val s = screen) {
-                Screen.Home -> HomeScreen(store, busy, ::start, ::resume, { screen = Screen.Stats }, { screen = Screen.Info })
+                Screen.Home -> HomeScreen(store, busy, ::start, ::resume, { screen = Screen.Stats }, { screen = Screen.Info }, { musicOpen = true })
                 Screen.Stats -> StatsScreen(store) { screen = Screen.Home }
                 Screen.Info -> InfoScreen(ads) { screen = Screen.Home }
-                is Screen.Play -> GameScreen(s.game, store, s.key, { screen = Screen.Home }, { lv -> screen = Screen.Home; start(lv, null) })
+                is Screen.Play -> GameScreen(s.game, store, s.key, { screen = Screen.Home }, { lv -> screen = Screen.Home; start(lv, null) }, { musicOpen = true })
             }
         }
         BannerBar(ads)
         Spacer(Modifier.navigationBarsPadding())
     }
+    if (musicOpen) MusicDialog { musicOpen = false }
 }
 
 @Composable
@@ -179,7 +181,7 @@ private fun GoldButton(text: String, sub: String? = null, onClick: () -> Unit) {
 }
 
 @Composable
-fun HomeScreen(store: Store, busy: Boolean, start: (Level, String?) -> Unit, resume: (GameState) -> Unit, stats: () -> Unit, info: () -> Unit) {
+fun HomeScreen(store: Store, busy: Boolean, start: (Level, String?) -> Unit, resume: (GameState) -> Unit, stats: () -> Unit, info: () -> Unit, music: () -> Unit) {
     val today = LocalDate.now().toString()
     val done = store.dailyDone(today)
     val streak = store.streak()
@@ -218,6 +220,7 @@ fun HomeScreen(store: Store, busy: Boolean, start: (Level, String?) -> Unit, res
             TextButton(onClick = stats) { Text("Statistik & Verlauf", color = Gold) }
             TextButton(onClick = info) { Text("Info & Datenschutz", color = Gold) }
         }
+        OutlinedButton(onClick = music, modifier = Modifier.fillMaxWidth()) { Text("🎵 Musik", color = Ink) }
     }
     del?.let { g ->
         AlertDialog(
@@ -281,7 +284,7 @@ fun InfoScreen(ads: AdsController, back: () -> Unit) {
 }
 
 @Composable
-fun GameScreen(g: GameState, store: Store, key: String, home: () -> Unit, next: (Level) -> Unit) {
+fun GameScreen(g: GameState, store: Store, key: String, home: () -> Unit, next: (Level) -> Unit, music: () -> Unit) {
     BackHandler { store.saveGame(key, g); home() }
     var menu by remember { mutableStateOf(false) }
     var msg by remember { mutableStateOf<String?>(null) }
@@ -360,6 +363,7 @@ fun GameScreen(g: GameState, store: Store, key: String, home: () -> Unit, next: 
                             ) { Text(p.name, color = p.ink, fontSize = 13.sp) }
                         }
                     }
+                    TextButton(onClick = { menu = false; music() }) { Text("🎵 Musik", color = Ink) }
                     TextButton(onClick = { g.autoNotes(); menu = false }) { Text("Alle Notizen eintragen", color = Ink) }
                     TextButton(onClick = { menu = false; next(g.level) }) { Text("Neues Rätsel (${g.level.label})", color = Ink) }
                     TextButton(onClick = { menu = false; store.saveGame(key, g); home() }) { Text("Zurück zum Menü", color = Ink) }
