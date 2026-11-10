@@ -15,6 +15,7 @@ class MainActivity : ComponentActivity() {
             statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
         )
+        Sfx.init(this)
         ads = AdsController(this)
         val store = Store(this)
         Palettes.cur = Palettes.all.getOrElse(store.theme()) { Palettes.all[0] }

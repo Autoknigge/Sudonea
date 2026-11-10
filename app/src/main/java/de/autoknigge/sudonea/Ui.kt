@@ -363,6 +363,7 @@ fun GameScreen(g: GameState, store: Store, key: String, home: () -> Unit, next: 
                             ) { Text(p.name, color = p.ink, fontSize = 13.sp) }
                         }
                     }
+                    TextButton(onClick = { Sfx.set(!Sfx.on) }) { Text(if (Sfx.on) "🔊 Tastentöne: an" else "🔇 Tastentöne: aus", color = Ink) }
                     TextButton(onClick = { menu = false; music() }) { Text("🎵 Musik", color = Ink) }
                     TextButton(onClick = { g.autoNotes(); menu = false }) { Text("Alle Notizen eintragen", color = Ink) }
                     TextButton(onClick = { menu = false; next(g.level) }) { Text("Neues Rätsel (${g.level.label})", color = Ink) }
@@ -391,7 +392,7 @@ private fun Pad(g: GameState, onHint: () -> Unit, onCheck: () -> Unit) {
         Box(modifier.height(62.dp), contentAlignment = Alignment.Center) {
             Box(
                 Modifier.size(54.dp).clip(androidx.compose.foundation.shape.CircleShape).background(if (on) Gold else Color.Transparent)
-                    .clickable(enabled = enabled, onClick = click),
+                    .clickable(enabled = enabled, onClick = { Sfx.click(); click() }),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -435,6 +436,7 @@ private fun Board(g: GameState) {
                 detectTapGestures { o ->
                     val cs = size.width / 9f
                     val c = (o.x / cs).toInt().coerceIn(0, 8); val r = (o.y / cs).toInt().coerceIn(0, 8)
+                    Sfx.click()
                     g.tapCell(r * 9 + c)
                 }
             }
