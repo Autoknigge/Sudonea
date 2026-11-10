@@ -499,3 +499,19 @@ private fun Board(g: GameState) {
         }
     }
 }
+
+
+/** Wird nach einem Absturz einmal gezeigt, damit der Fehler gemeldet werden kann. */
+@Composable
+fun CrashScreen(trace: String, proceed: () -> Unit) {
+    val ctx = LocalContext.current
+    Column(Modifier.fillMaxSize().background(Forest).statusBarsPadding().navigationBarsPadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text("Die App ist beim letzten Mal abgestürzt", color = Gold, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Text("Bitte teile den Fehlerbericht, dann behebe ich es.", color = Ink)
+        Text(trace, color = Muted, fontSize = 10.sp, modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()))
+        Button(onClick = {
+            ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, trace), "Fehlerbericht teilen"))
+        }, modifier = Modifier.fillMaxWidth()) { Text("Fehlerbericht teilen") }
+        OutlinedButton(onClick = proceed, modifier = Modifier.fillMaxWidth()) { Text("Weiter zur App", color = Ink) }
+    }
+}

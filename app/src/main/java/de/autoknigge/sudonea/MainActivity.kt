@@ -18,7 +18,16 @@ class MainActivity : ComponentActivity() {
         ads = AdsController(this)
         val store = Store(this)
         Palettes.cur = Palettes.all.getOrElse(store.theme()) { Palettes.all[0] }
-        setContent { SudoneaTheme { Root(store, ads) } }
+        val sp = getSharedPreferences("crash", MODE_PRIVATE)
+        val crash = sp.getString("trace", null)
+        setContent {
+            SudoneaTheme {
+                var c by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(crash) }
+                val t = c
+                if (t != null) CrashScreen(t) { sp.edit().remove("trace").commit(); c = null }
+                else Root(store, ads)
+            }
+        }
         ads.start()
     }
 }
