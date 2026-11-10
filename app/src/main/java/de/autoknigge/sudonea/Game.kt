@@ -28,6 +28,8 @@ class GameState(val grid: IntArray, val solution: IntArray, val level: Level, va
     val canUndo get() = undo.isNotEmpty()
     val canRedo get() = redo.isNotEmpty()
 
+    val id: String get() = daily?.let { "daily-$it" } ?: "${level.name}-$number"
+
     fun isGiven(i: Int) = grid[i] != 0
     fun isWrong(i: Int) = vals[i] != 0 && vals[i] != solution[i]
     fun count(d: Int) = vals.count { it == d }

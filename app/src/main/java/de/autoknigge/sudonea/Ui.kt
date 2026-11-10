@@ -95,10 +95,13 @@ fun Root(store: Store, ads: AdsController) {
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
+    fun resume(g: GameState) { screen = Screen.Play(g, g.id) }
+
     fun start(level: Level, daily: String?) {
-        val key = daily?.let { "daily" } ?: level.name
-        val saved = store.loadGame(key)
-        if (saved != null && saved.daily == daily) { screen = Screen.Play(saved, key); return }
+        if (daily != null) {
+            val saved = store.loadGame("daily-$daily")
+            if (saved != null) { resume(saved); return }
+        }
         busy = true
         scope.launch {
             val number = if (daily == null) (1..99999).random() else 0
@@ -108,16 +111,16 @@ fun Root(store: Store, ads: AdsController) {
             }
             val g = GameState.of(p, daily, number)
             store.started(g.level)
-            store.saveGame(key, g)
+            store.saveGame(g.id, g)
             busy = false
-            screen = Screen.Play(g, key)
+            resume(g)
         }
     }
 
     Column(Modifier.fillMaxSize().background(Forest).statusBarsPadding()) {
         Box(Modifier.weight(1f)) {
             when (val s = screen) {
-                Screen.Home -> HomeScreen(store, ads, busy, ::start, { screen = Screen.Stats }, { screen = Screen.Info })
+                Screen.Home -> HomeScreen(store, busy, ::start, ::resume, { screen = Screen.Stats }, { screen = Screen.Info })
                 Screen.Stats -> StatsScreen(store) { screen = Screen.Home }
                 Screen.Info -> InfoScreen(ads) { screen = Screen.Home }
                 is Screen.Play -> GameScreen(s.game, store, s.key, { screen = Screen.Home }, { lv -> screen = Screen.Home; start(lv, null) })
@@ -142,30 +145,54 @@ private fun GoldButton(text: String, sub: String? = null, onClick: () -> Unit) {
 }
 
 @Composable
-fun HomeScreen(store: Store, ads: AdsController, busy: Boolean, start: (Level, String?) -> Unit, stats: () -> Unit, info: () -> Unit) {
+fun HomeScreen(store: Store, busy: Boolean, start: (Level, String?) -> Unit, resume: (GameState) -> Unit, stats: () -> Unit, info: () -> Unit) {
     val today = LocalDate.now().toString()
     val done = store.dailyDone(today)
     val streak = store.streak()
+    var refresh by remember { mutableStateOf(0) }
+    var del by remember { mutableStateOf<GameState?>(null) }
+    val open = remember(refresh) { store.gameIds().mapNotNull { store.loadGame(it) } }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Image(painterResource(R.drawable.logo_header), null, Modifier.fillMaxWidth().height(150.dp), contentScale = ContentScale.Fit)
+        Image(painterResource(R.drawable.logo_header), null, Modifier.fillMaxWidth().height(130.dp), contentScale = ContentScale.Fit)
         if (busy) Text("Rätsel wird erstellt …", color = Gold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
         GoldButton(
             "★ Tagesrätsel", if (done) "heute gelöst ✓" + (if (streak > 0) " · Serie $streak" else "")
             else "für alle gleich" + (if (streak > 0) " · Serie $streak" else "")
         ) { start(Level.EASY, today) }
         Level.values().forEach { l ->
-            val saved = store.loadGame(l.name)
             OutlinedButton(
-                onClick = { start(l, null) }, modifier = Modifier.fillMaxWidth().height(56.dp),
-                shape = RoundedCornerShape(28.dp), border = androidx.compose.foundation.BorderStroke(1.5.dp, Gold)
-            ) {
-                Text(l.label + (if (saved != null) "  ·  Fortsetzen (${fmtTime(saved.seconds)})" else "  ·  Neues Rätsel"), color = Ink, fontSize = 16.sp)
+                onClick = { start(l, null) }, modifier = Modifier.fillMaxWidth().height(52.dp),
+                shape = RoundedCornerShape(26.dp), border = androidx.compose.foundation.BorderStroke(1.5.dp, Gold)
+            ) { Text(l.label + "  ·  neues Rätsel", color = Ink, fontSize = 16.sp) }
+        }
+        if (open.isNotEmpty()) {
+            Text("Angefangene Rätsel", color = Gold, fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(top = 8.dp))
+            open.forEach { g ->
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Panel).clickable { resume(g) }.padding(start = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(Modifier.weight(1f).padding(vertical = 10.dp)) {
+                        Text(if (g.daily != null) "★ Tagesrätsel ${g.daily}" else g.level.label + " #" + g.number, color = Ink, fontWeight = FontWeight.Bold)
+                        Text("${fmtTime(g.seconds)} · ${(0 until 81).count { g.vals[it] != 0 && !g.isGiven(it) }} von ${81 - g.grid.count { it != 0 }} Feldern", color = Muted, fontSize = 12.sp)
+                    }
+                    TextButton(onClick = { del = g }) { Text("🗑", fontSize = 20.sp) }
+                }
             }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            TextButton(onClick = stats) { Text("Statistik", color = Gold) }
+            TextButton(onClick = stats) { Text("Statistik & Verlauf", color = Gold) }
             TextButton(onClick = info) { Text("Info & Datenschutz", color = Gold) }
         }
+    }
+    del?.let { g ->
+        AlertDialog(
+            onDismissRequest = { del = null }, containerColor = Panel,
+            title = { Text("Rätsel löschen?", color = Gold) },
+            text = { Text((if (g.daily != null) "Tagesrätsel ${g.daily}" else g.level.label + " #" + g.number) + " wird mit dem Spielstand entfernt.", color = Ink) },
+            confirmButton = { TextButton(onClick = { store.deleteGame(g.id); del = null; refresh++ }) { Text("Löschen", color = Bad) } },
+            dismissButton = { TextButton(onClick = { del = null }) { Text("Abbrechen", color = Ink) } }
+        )
     }
 }
 
@@ -185,6 +212,19 @@ fun StatsScreen(store: Store, back: () -> Unit) {
             Text("Tagesrätsel", color = Gold, fontWeight = FontWeight.Bold, fontSize = 18.sp)
             Text("Gelöst: ${store.dailyCount()}", color = Ink)
             Text("Aktuelle Serie: ${store.streak()} Tage · Beste Serie: ${store.bestStreak()}", color = Ink)
+        }
+        var refresh by remember { mutableStateOf(0) }
+        val hist = remember(refresh) { store.history() }
+        Text("Bearbeitete Rätsel", color = Gold, fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(top = 8.dp))
+        if (hist.isEmpty()) Text("Noch keine gelösten Rätsel.", color = Muted)
+        hist.forEachIndexed { i, h ->
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Panel).padding(start = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f).padding(vertical = 8.dp)) {
+                    Text((if (h.daily != null) "★ Tagesrätsel ${h.daily}" else (h.level?.label ?: "") + " #" + h.number), color = Ink, fontWeight = FontWeight.Bold)
+                    Text("${h.date} · ${fmtTime(h.seconds)} · Fehler ${h.mistakes} · Tipps ${h.hints}", color = Muted, fontSize = 12.sp)
+                }
+                TextButton(onClick = { store.deleteHistory(i); refresh++ }) { Text("🗑", fontSize = 20.sp) }
+            }
         }
         OutlinedButton(onClick = back, modifier = Modifier.fillMaxWidth()) { Text("Zurück", color = Ink) }
     }
@@ -363,8 +403,8 @@ private fun Board(g: GameState) {
         }
         for (k in 0..9) {
             val thick = k % 3 == 0
-            val w = if (thick) 3.dp.toPx() else 1.dp.toPx()
-            val col = if (thick) Gold else Color(0x55B8C7B5)
+            val w = if (thick) 2.dp.toPx() else 0.6.dp.toPx()
+            val col = if (thick) Color(0xFFF2C94C) else Color(0x66B8C7B5)
             drawLine(col, Offset(k * cs, 0f), Offset(k * cs, size.height), w)
             drawLine(col, Offset(0f, k * cs), Offset(size.width, k * cs), w)
         }

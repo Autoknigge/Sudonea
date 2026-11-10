@@ -4,10 +4,12 @@ import java.util.Random
 
 /** Eigene Sudoku-Engine: Löser mit Eindeutigkeitsprüfung, Generator mit Schwierigkeitsgrad und erklärende Tipps. */
 
-enum class Level(val label: String, val clues: IntRange) {
-    EASY("Leicht", 36..44),
-    MEDIUM("Mittel", 30..35),
-    HARD("Schwer", 24..30)
+enum class Level(val label: String, val clues: IntRange, val need: Int) {
+    EASY("Leicht", 36..44, 1),
+    MEDIUM("Mittel", 30..35, 2),
+    HARD("Schwer", 26..32, 3),
+    VERY_HARD("Sehr schwer", 24..29, 4),
+    ULTRA("Ultra", 22..26, 5)
 }
 
 enum class Tech(val level: Int, val label: String) {
@@ -16,7 +18,10 @@ enum class Tech(val level: Int, val label: String) {
     POINTING(2, "Zeiger (Pointing Pair)"),
     CLAIMING(2, "Blockbindung (Box/Line)"),
     NAKED_PAIR(2, "Nacktes Paar"),
-    HIDDEN_PAIR(3, "Verstecktes Paar")
+    HIDDEN_PAIR(3, "Verstecktes Paar"),
+    NAKED_TRIPLE(3, "Nacktes Tripel"),
+    X_WING(4, "X-Wing"),
+    XY_WING(4, "XY-Wing")
 }
 
 /** Ein logischer Lösungsschritt. [place] = Zahl eintragen, sonst Kandidaten streichen. */
@@ -150,38 +155,32 @@ object Sudoku {
         val logic = Logic(grid)
         var max = 1
         while (!logic.solved()) {
-            val s = logic.next() ?: return 4
+            val s = logic.next() ?: return 5
             if (s.tech.level > max) max = s.tech.level
             logic.apply(s)
         }
         return max
     }
 
-    private fun matches(level: Level, rating: Int) = when (level) {
-        Level.EASY -> rating == 1
-        Level.MEDIUM -> rating == 2
-        Level.HARD -> rating >= 3
-    }
+    private fun matches(level: Level, rating: Int) = if (level == Level.ULTRA) rating >= 5 else rating == level.need
 
     fun generate(level: Level, rnd: Random = Random()): Puzzle {
         var fallback: Puzzle? = null
-        repeat(80) {
+        repeat(300) {
             val full = fullGrid(rnd)
             val target = level.clues.first + rnd.nextInt(level.clues.last - level.clues.first + 1)
             val g = carve(full, target, rnd)
             val rating = rate(g)
             val p = Puzzle(g, full, level, rating)
             if (matches(level, rating)) return p
-            if (fallback == null || Math.abs(rating - need(level)) < Math.abs(fallback!!.rating - need(level))) fallback = p
+            if (fallback == null || Math.abs(rating - level.need) < Math.abs(fallback!!.rating - level.need)) fallback = p
         }
         return fallback!!
     }
 
-    private fun need(level: Level) = when (level) { Level.EASY -> 1; Level.MEDIUM -> 2; Level.HARD -> 3 }
-
     /** Tagesrätsel: für alle Spieler am selben Datum gleich. */
     fun daily(year: Int, month: Int, day: Int, weekday: Int): Puzzle {
-        val level = when (weekday) { 1, 2 -> Level.EASY; 3, 4, 5 -> Level.MEDIUM; else -> Level.HARD }
+        val level = when (weekday) { 1 -> Level.EASY; 2, 3 -> Level.MEDIUM; 4, 5, 7 -> Level.HARD; else -> Level.VERY_HARD }
         return generate(level, Random(year * 10000L + month * 100L + day))
     }
 }
@@ -211,7 +210,7 @@ class Logic(start: IntArray) {
     private fun digits(mask: Int) = (1..9).filter { mask and (1 shl it) != 0 }
 
     fun next(): Step? =
-        nakedSingle() ?: hiddenSingle() ?: pointing() ?: claiming() ?: nakedPair() ?: hiddenPair()
+        nakedSingle() ?: hiddenSingle() ?: pointing() ?: claiming() ?: nakedPair() ?: hiddenPair() ?: nakedTriple() ?: xWing() ?: xyWing()
 
     private fun nakedSingle(): Step? {
         for (i in 0 until 81) if (g[i] == 0 && Integer.bitCount(cand[i]) == 1) {
@@ -295,6 +294,67 @@ class Logic(start: IntArray) {
                 val elim = c1.flatMap { c -> digits(cand[c] and keep.inv()).map { c to it } }
                 if (elim.isNotEmpty()) return Step(Tech.HIDDEN_PAIR, c1, d1, false, elim,
                     "In ${Sudoku.unitName(u)} kommen $d1 und $d2 nur in denselben zwei Feldern vor. Dort können keine anderen Zahlen stehen: Streiche die übrigen Kandidaten dieser zwei Felder.")
+            }
+        }
+        return null
+    }
+
+    private fun nakedTriple(): Step? {
+        for ((u, unit) in Sudoku.UNITS.withIndex()) {
+            val cs = unit.filter { g[it] == 0 && Integer.bitCount(cand[it]) in 2..3 }
+            for (a in cs.indices) for (b in a + 1 until cs.size) for (c in b + 1 until cs.size) {
+                val m = cand[cs[a]] or cand[cs[b]] or cand[cs[c]]
+                if (Integer.bitCount(m) != 3) continue
+                val elim = unit.filter { it != cs[a] && it != cs[b] && it != cs[c] && g[it] == 0 && cand[it] and m != 0 }
+                    .flatMap { x -> digits(cand[x] and m).map { x to it } }
+                if (elim.isNotEmpty()) {
+                    val ds = digits(m)
+                    return Step(Tech.NAKED_TRIPLE, listOf(cs[a], cs[b], cs[c]), ds[0], false, elim,
+                        "In ${Sudoku.unitName(u)} teilen sich drei Felder nur die Kandidaten ${ds[0]}, ${ds[1]} und ${ds[2]}. Diese drei Zahlen gehören diesen drei Feldern: Streiche sie aus den übrigen Feldern.")
+                }
+            }
+        }
+        return null
+    }
+
+    private fun xWing(): Step? {
+        for (d in 1..9) {
+            for (byRow in listOf(true, false)) {
+                val lines = (0 until 9).map { l -> (0 until 9).filter { o -> val cell = if (byRow) l * 9 + o else o * 9 + l; g[cell] == 0 && has(cell, d) } }
+                for (a in 0 until 9) for (b in a + 1 until 9) {
+                    if (lines[a].size != 2 || lines[a] != lines[b]) continue
+                    val elim = ArrayList<Pair<Int, Int>>()
+                    for (o in lines[a]) for (l in 0 until 9) if (l != a && l != b) {
+                        val cell = if (byRow) l * 9 + o else o * 9 + l
+                        if (g[cell] == 0 && has(cell, d)) elim.add(cell to d)
+                    }
+                    if (elim.isNotEmpty()) {
+                        val cells = listOf(a, b).flatMap { l -> lines[a].map { o -> if (byRow) l * 9 + o else o * 9 + l } }
+                        val (n1, n2) = if (byRow) "Zeilen" to "Spalten" else "Spalten" to "Zeilen"
+                        return Step(Tech.X_WING, cells, d, false, elim,
+                            "X-Wing für die $d: In den $n1 ${a + 1} und ${b + 1} liegt die $d jeweils nur in denselben zwei $n2. Sie bilden ein Rechteck, die $d steht also in zwei gegenüberliegenden Ecken. Streiche die $d aus den übrigen Feldern dieser $n2.")
+                    }
+                }
+            }
+        }
+        return null
+    }
+
+    private fun xyWing(): Step? {
+        for (p in 0 until 81) {
+            if (g[p] != 0 || Integer.bitCount(cand[p]) != 2) continue
+            val pd = digits(cand[p])
+            val x = pd[0]; val y = pd[1]
+            val peers = Sudoku.PEERS[p].filter { g[it] == 0 && Integer.bitCount(cand[it]) == 2 }
+            for (w1 in peers) {
+                if (!has(w1, x) || has(w1, y)) continue
+                val z = digits(cand[w1] and (1 shl x).inv()).firstOrNull() ?: continue
+                for (w2 in peers) {
+                    if (w2 == w1 || !has(w2, y) || has(w2, x) || !has(w2, z) || Integer.bitCount(cand[w2]) != 2) continue
+                    val elim = Sudoku.PEERS[w1].filter { it in Sudoku.PEERS[w2] && it != p && g[it] == 0 && has(it, z) }.map { it to z }
+                    if (elim.isNotEmpty()) return Step(Tech.XY_WING, listOf(p, w1, w2), z, false, elim,
+                        "XY-Wing: Das Feld ${Sudoku.cellName(p)} hat die Kandidaten $x und $y. Je nachdem, welche davon stimmt, steht in einem der beiden Flügelfelder die $z. Alle Felder, die beide Flügel sehen, können deshalb keine $z haben: Streiche sie.")
+                }
             }
         }
         return null
