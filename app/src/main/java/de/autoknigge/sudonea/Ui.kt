@@ -69,7 +69,8 @@ import java.time.LocalDate
 
 class Pal(
     val name: String, val bg: Color, val panel: Color, val peer: Color, val ink: Color, val muted: Color,
-    val accent: Color, val onAccent: Color, val line: Color, val bad: Color, val light: Boolean
+    val accent: Color, val onAccent: Color, val line: Color, val bad: Color, val light: Boolean,
+    val tiles: Boolean = false, val boardBg: Color = Color.Unspecified, val tileGiven: Color = Color.Unspecified, val tileEmpty: Color = Color.Unspecified, val userInk: Color = Color.Unspecified
 )
 
 object Palettes {
@@ -77,7 +78,12 @@ object Palettes {
         Pal("Wald", Color(0xFF0B2A16), Color(0xFF12381F), Color(0xFF1B4A2A), Color(0xFFF2F0E0), Color(0xFFD3DFD0), Color(0xFFE0B23E), OnAccent, Color(0xFFF2C94C), Color(0xFFFF6B5E), false),
         Pal("Helles Holz", Color(0xFFF0DDB9), Color(0xFFE4C896), Color(0xFFEBD3A6), Color(0xFF2E1D0B), Color(0xFF5A4023), Color(0xFFA85F0C), Color(0xFFFFF8E8), Color(0xFF8A5A1F), Color(0xFFC2260F), true),
         Pal("Nacht", Color(0xFF0E1A33), Color(0xFF172949), Color(0xFF20365E), Color(0xFFEEF2FB), Color(0xFFC3CEE6), Color(0xFFF2C94C), OnAccent, Color(0xFFF2C94C), Color(0xFFFF7A6B), false),
-        Pal("Papier", Color(0xFFFAF9F2), Color(0xFFECEADD), Color(0xFFE2E7D8), Color(0xFF1B1B1B), Color(0xFF50504A), Color(0xFF1B6EB5), Color(0xFFFFFFFF), Color(0xFFB08A1E), Color(0xFFC2260F), true)
+        Pal("Papier", Color(0xFFFAF9F2), Color(0xFFECEADD), Color(0xFFE2E7D8), Color(0xFF1B1B1B), Color(0xFF50504A), Color(0xFF1B6EB5), Color(0xFFFFFFFF), Color(0xFFB08A1E), Color(0xFFC2260F), true),
+        Pal(
+            "Holzbrett", Color(0xFFC9A87C), Color(0xFFE6CC9A), Color(0xFFDDBF88), Color(0xFF5A3318), Color(0xFF6B4524), Color(0xFF8A4B12), Color(0xFFFFF8E8),
+            Color(0xFF3B2412), Color(0xFFC2260F), true,
+            tiles = true, boardBg = Color(0xFF4A2E1B), tileGiven = Color(0xFFF0D9A9), tileEmpty = Color(0xFFE6CB96), userInk = Color(0xFF9A6B3C)
+        )
     )
     var cur by mutableStateOf(all[0])
 }
@@ -420,7 +426,7 @@ private fun Board(g: GameState) {
     val paint = remember { android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { textAlign = android.graphics.Paint.Align.CENTER } }
     val hintCells = g.hint?.cells ?: emptyList()
     Canvas(
-        Modifier.fillMaxWidth().aspectRatio(1f).background(Panel)
+        Modifier.fillMaxWidth().aspectRatio(1f).background(if (Palettes.cur.tiles) Palettes.cur.boardBg else Panel)
             .pointerInput(Unit) {
                 detectTapGestures { o ->
                     val cs = size.width / 9f
@@ -432,21 +438,33 @@ private fun Board(g: GameState) {
         val cs = size.width / 9f
         val sel = g.sel
         val selVal = g.hd
+        val pal = Palettes.cur
         for (i in 0 until 81) {
             val r = i / 9; val c = i % 9
             val bg = when {
                 i == sel -> Gold.copy(alpha = 0.55f)
                 i in hintCells -> Gold.copy(alpha = 0.30f)
                 selVal != 0 && (g.vals[i] == selVal || (g.vals[i] == 0 && g.notes[i] and (1 shl selVal) != 0)) -> Gold.copy(alpha = 0.35f)
-                sel >= 0 && (r == sel / 9 || c == sel % 9 || (r / 3 == sel / 9 / 3 && c / 3 == sel % 9 / 3)) -> Peer
+                sel >= 0 && (r == sel / 9 || c == sel % 9 || (r / 3 == sel / 9 / 3 && c / 3 == sel % 9 / 3)) -> Peer.copy(alpha = if (pal.tiles) 0.55f else 1f)
                 else -> Color.Transparent
             }
-            if (bg != Color.Transparent) drawRect(bg, Offset(c * cs, r * cs), androidx.compose.ui.geometry.Size(cs, cs))
+            if (pal.tiles) {
+                // Holzbrett: erhabene Steine (Vorgaben) und vertiefte Felder, größere Fuge zwischen den Blöcken
+                val small = cs * 0.045f; val big = cs * 0.10f
+                val l = c * cs + (if (c % 3 == 0) big else small); val rt = (c + 1) * cs - (if (c % 3 == 2) big else small)
+                val t = r * cs + (if (r % 3 == 0) big else small); val bt = (r + 1) * cs - (if (r % 3 == 2) big else small)
+                val tl = Offset(l, t); val sz = androidx.compose.ui.geometry.Size(rt - l, bt - t)
+                val rad = androidx.compose.ui.geometry.CornerRadius(cs * 0.12f)
+                val given = g.isGiven(i)
+                drawRoundRect(if (given) pal.tileGiven else pal.tileEmpty, tl, sz, rad)
+                drawRoundRect(pal.line.copy(alpha = if (given) 0.85f else 0.45f), tl, sz, rad, style = androidx.compose.ui.graphics.drawscope.Stroke(if (given) 1.6.dp.toPx() else 1.dp.toPx()))
+                if (bg != Color.Transparent) drawRoundRect(bg, tl, sz, rad)
+            } else if (bg != Color.Transparent) drawRect(bg, Offset(c * cs, r * cs), androidx.compose.ui.geometry.Size(cs, cs))
         }
-        for (k in 0..9) {
+        if (!pal.tiles) for (k in 0..9) {
             val thick = k % 3 == 0
             val w = if (thick) 2.dp.toPx() else 0.6.dp.toPx()
-            val col = if (thick) Palettes.cur.line else Palettes.cur.muted.copy(alpha = 0.45f)
+            val col = if (thick) pal.line else pal.muted.copy(alpha = 0.45f)
             drawLine(col, Offset(k * cs, 0f), Offset(k * cs, size.height), w)
             drawLine(col, Offset(0f, k * cs), Offset(size.width, k * cs), w)
         }
@@ -460,6 +478,7 @@ private fun Board(g: GameState) {
                 paint.color = when {
                     g.isWrong(i) -> Bad.toArgb()
                     g.isGiven(i) -> Ink.toArgb()
+                    pal.tiles -> pal.userInk.toArgb()
                     else -> Gold.toArgb()
                 }
                 cv.drawText("$v", c * cs + cs / 2, r * cs + cs / 2 + paint.textSize * 0.35f, paint)
