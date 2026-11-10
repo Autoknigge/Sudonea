@@ -9,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,7 +18,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -33,6 +36,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -61,23 +67,36 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
 
-val Forest = Color(0xFF0B2A16)
-val Panel = Color(0xFF12381F)
-val Peer = Color(0xFF1B4A2A)
-val SameDigit = Color(0xFF2F6B3E)
-val Gold = Color(0xFFE0B23E)
-val Ink = Color(0xFFF2F0E0)
-val Muted = Color(0xFFB8C7B5)
-val Bad = Color(0xFFFF6B5E)
+class Pal(
+    val name: String, val bg: Color, val panel: Color, val peer: Color, val ink: Color, val muted: Color,
+    val accent: Color, val onAccent: Color, val line: Color, val bad: Color, val light: Boolean
+)
+
+object Palettes {
+    val all = listOf(
+        Pal("Wald", Color(0xFF0B2A16), Color(0xFF12381F), Color(0xFF1B4A2A), Color(0xFFF2F0E0), Color(0xFFD3DFD0), Color(0xFFE0B23E), OnAccent, Color(0xFFF2C94C), Color(0xFFFF6B5E), false),
+        Pal("Helles Holz", Color(0xFFF0DDB9), Color(0xFFE4C896), Color(0xFFEBD3A6), Color(0xFF2E1D0B), Color(0xFF5A4023), Color(0xFFA85F0C), Color(0xFFFFF8E8), Color(0xFF8A5A1F), Color(0xFFC2260F), true),
+        Pal("Nacht", Color(0xFF0E1A33), Color(0xFF172949), Color(0xFF20365E), Color(0xFFEEF2FB), Color(0xFFC3CEE6), Color(0xFFF2C94C), OnAccent, Color(0xFFF2C94C), Color(0xFFFF7A6B), false),
+        Pal("Papier", Color(0xFFFAF9F2), Color(0xFFECEADD), Color(0xFFE2E7D8), Color(0xFF1B1B1B), Color(0xFF50504A), Color(0xFF1B6EB5), Color(0xFFFFFFFF), Color(0xFFB08A1E), Color(0xFFC2260F), true)
+    )
+    var cur by mutableStateOf(all[0])
+}
+
+val Forest: Color get() = Palettes.cur.bg
+val Panel: Color get() = Palettes.cur.panel
+val Peer: Color get() = Palettes.cur.peer
+val Gold: Color get() = Palettes.cur.accent
+val Ink: Color get() = Palettes.cur.ink
+val Muted: Color get() = Palettes.cur.muted
+val Bad: Color get() = Palettes.cur.bad
+val OnAccent: Color get() = Palettes.cur.onAccent
 
 @Composable
 fun SudoneaTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = darkColorScheme(
-            primary = Gold, onPrimary = Color(0xFF1A1400), background = Forest, surface = Panel,
-            onSurface = Ink, onBackground = Ink, secondary = Gold
-        ), content = content
-    )
+    val p = Palettes.cur
+    val scheme = if (p.light) lightColorScheme(primary = p.accent, onPrimary = p.onAccent, background = p.bg, surface = p.panel, onSurface = p.ink, onBackground = p.ink, secondary = p.accent)
+    else darkColorScheme(primary = p.accent, onPrimary = p.onAccent, background = p.bg, surface = p.panel, onSurface = p.ink, onBackground = p.ink, secondary = p.accent)
+    MaterialTheme(colorScheme = scheme, content = content)
 }
 
 private sealed interface Screen {
@@ -94,6 +113,15 @@ fun Root(store: Store, ads: AdsController) {
     var screen by remember { mutableStateOf<Screen>(Screen.Home) }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val view = LocalView.current
+    val light = Palettes.cur.light
+    SideEffect {
+        (view.context as? android.app.Activity)?.window?.let {
+            val c = androidx.core.view.WindowCompat.getInsetsController(it, view)
+            c.isAppearanceLightStatusBars = light
+            c.isAppearanceLightNavigationBars = light
+        }
+    }
 
     fun resume(g: GameState) { screen = Screen.Play(g, g.id) }
 
@@ -135,7 +163,7 @@ fun Root(store: Store, ads: AdsController) {
 private fun GoldButton(text: String, sub: String? = null, onClick: () -> Unit) {
     Button(
         onClick = onClick, modifier = Modifier.fillMaxWidth().height(60.dp), shape = RoundedCornerShape(30.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Color(0xFF1A1400))
+        colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = OnAccent)
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(text, fontSize = 18.sp, fontWeight = FontWeight.Bold)
@@ -264,17 +292,14 @@ fun GameScreen(g: GameState, store: Store, key: String, home: () -> Unit, next: 
     LaunchedEffect(g.vals.toList(), g.notes.toList()) { store.saveGame(key, g) }
 
     Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = { store.saveGame(key, g); home() }) { Text("←", color = Gold, fontSize = 22.sp) }
-            Spacer(Modifier.weight(1f))
-            TextButton(onClick = { menu = true }) { Text("⋮", color = Gold, fontSize = 22.sp) }
-        }
-        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = { store.saveGame(key, g); home() }, contentPadding = PaddingValues(horizontal = 10.dp)) { Text("←", color = Gold, fontSize = 24.sp) }
             Text(
-                if (g.daily != null) "★ Tagesrätsel · ${g.level.label}" else g.level.label + (if (g.number > 0) " #${g.number}" else ""),
-                color = Ink, fontSize = 18.sp
+                if (g.daily != null) "★ Tagesrätsel" else g.level.label + (if (g.number > 0) " #${g.number}" else ""),
+                color = Ink, fontSize = 17.sp, modifier = Modifier.weight(1f), maxLines = 1
             )
-            Text(fmtTime(g.seconds), color = Gold, fontSize = 18.sp)
+            Text(fmtTime(g.seconds), color = Gold, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            TextButton(onClick = { menu = true }, contentPadding = PaddingValues(horizontal = 12.dp)) { Text("⋮", color = Gold, fontSize = 24.sp) }
         }
         Box(Modifier.fillMaxWidth()) {
             Board(g)
@@ -284,26 +309,34 @@ fun GameScreen(g: GameState, store: Store, key: String, home: () -> Unit, next: 
                 }
             }
         }
-        Text("Fehler: ${g.mistakes}   Tipps: ${g.hints}", color = Muted, fontSize = 12.sp, modifier = Modifier.fillMaxWidth().padding(top = 4.dp), textAlign = TextAlign.Center)
         val h = g.hint
         val note = msg
-        if (h != null || note != null) {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp).clip(RoundedCornerShape(14.dp)).background(Panel).border(1.dp, Gold, RoundedCornerShape(14.dp)).padding(10.dp)) {
-                Text(h?.text ?: note ?: "", color = Ink, fontSize = 14.sp)
-                if (h != null && (h.cell != null || h.elim.isNotEmpty())) {
-                    TextButton(onClick = { g.applyHint() }) {
-                        Text(if (h.cell != null) "Zahl eintragen" else "Notizen streichen", color = Gold)
+        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.Top) {
+            Column {
+                Text("Fehler: ${g.mistakes}", color = Ink, fontSize = 14.sp)
+                Text("Tipps: ${g.hints}", color = Ink, fontSize = 14.sp)
+            }
+            if (h != null || note != null) {
+                Column(
+                    Modifier.weight(1f).padding(start = 12.dp).heightIn(max = 110.dp).clip(RoundedCornerShape(12.dp)).background(Panel)
+                        .border(1.dp, Gold, RoundedCornerShape(12.dp)).verticalScroll(rememberScrollState()).padding(8.dp)
+                ) {
+                    Text(h?.text ?: note ?: "", color = Ink, fontSize = 13.sp)
+                    if (h != null && (h.cell != null || h.elim.isNotEmpty())) {
+                        Text(
+                            if (h.cell != null) "▶ Zahl eintragen" else "▶ Notizen streichen", color = Gold, fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(top = 6.dp).clickable { g.applyHint() }
+                        )
                     }
                 }
             }
         }
-        Spacer(Modifier.weight(1f))
         Pad(g, onHint = { msg = null; g.giveHint() }, onCheck = {
             g.hint = null
             val w = g.wrongCount()
             msg = if (w == 0) "Bis jetzt ist alles richtig." else if (w == 1) "Eine Zahl ist falsch (rot markiert)." else "$w Zahlen sind falsch (rot markiert)."
         })
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.weight(1f))
     }
 
     if (menu) {
@@ -312,6 +345,15 @@ fun GameScreen(g: GameState, store: Store, key: String, home: () -> Unit, next: 
             title = { Text("Menü", color = Gold) },
             text = {
                 Column {
+                    Text("Farbe", color = Muted, fontSize = 12.sp)
+                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Palettes.all.forEachIndexed { i, p ->
+                            Box(
+                                Modifier.clip(RoundedCornerShape(10.dp)).background(p.bg).border(2.dp, if (Palettes.cur === p) Gold else Color.Gray, RoundedCornerShape(10.dp))
+                                    .clickable { Palettes.cur = p; store.setTheme(i) }.padding(horizontal = 12.dp, vertical = 8.dp)
+                            ) { Text(p.name, color = p.ink, fontSize = 13.sp) }
+                        }
+                    }
                     TextButton(onClick = { g.autoNotes(); menu = false }) { Text("Alle Notizen eintragen", color = Ink) }
                     TextButton(onClick = { menu = false; next(g.level) }) { Text("Neues Rätsel (${g.level.label})", color = Ink) }
                     TextButton(onClick = { menu = false; store.saveGame(key, g); home() }) { Text("Zurück zum Menü", color = Ink) }
@@ -343,8 +385,8 @@ private fun Pad(g: GameState, onHint: () -> Unit, onCheck: () -> Unit) {
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(label, fontSize = 26.sp, color = if (on) Color(0xFF1A1400) else if (enabled) Ink else Muted.copy(alpha = 0.4f))
-                    if (sub != null) Text(sub, fontSize = 9.sp, color = Muted)
+                    Text(label, fontSize = 26.sp, color = if (on) OnAccent else if (enabled) Ink else Muted.copy(alpha = 0.4f))
+                    if (sub != null) Text(sub, fontSize = 11.sp, color = Ink, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -404,7 +446,7 @@ private fun Board(g: GameState) {
         for (k in 0..9) {
             val thick = k % 3 == 0
             val w = if (thick) 2.dp.toPx() else 0.6.dp.toPx()
-            val col = if (thick) Color(0xFFF2C94C) else Color(0x66B8C7B5)
+            val col = if (thick) Palettes.cur.line else Palettes.cur.muted.copy(alpha = 0.45f)
             drawLine(col, Offset(k * cs, 0f), Offset(k * cs, size.height), w)
             drawLine(col, Offset(0f, k * cs), Offset(size.width, k * cs), w)
         }
@@ -422,9 +464,9 @@ private fun Board(g: GameState) {
                 }
                 cv.drawText("$v", c * cs + cs / 2, r * cs + cs / 2 + paint.textSize * 0.35f, paint)
             } else if (g.notes[i] != 0) {
-                paint.textSize = cs * 0.27f
-                paint.isFakeBoldText = false
-                paint.color = Muted.toArgb()
+                paint.textSize = cs * 0.30f
+                paint.isFakeBoldText = true
+                paint.color = Ink.toArgb()
                 for (d in 1..9) if (g.notes[i] and (1 shl d) != 0) {
                     val nx = c * cs + cs / 6f * (1 + 2 * ((d - 1) % 3))
                     val ny = r * cs + cs / 6f * (1 + 2 * ((d - 1) / 3)) + paint.textSize * 0.35f

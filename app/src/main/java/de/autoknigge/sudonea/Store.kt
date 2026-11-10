@@ -42,6 +42,9 @@ class Store(ctx: Context) {
         p.edit().putString("history", l.joinToString("\n")).apply()
     }
 
+    fun theme() = p.getInt("theme", 0)
+    fun setTheme(i: Int) = p.edit().putInt("theme", i).apply()
+
     fun played(l: Level) = p.getInt("p_${l.name}", 0)
     fun won(l: Level) = p.getInt("w_${l.name}", 0)
     fun best(l: Level) = p.getInt("b_${l.name}", 0)

@@ -17,6 +17,7 @@ class MainActivity : ComponentActivity() {
         )
         ads = AdsController(this)
         val store = Store(this)
+        Palettes.cur = Palettes.all.getOrElse(store.theme()) { Palettes.all[0] }
         setContent { SudoneaTheme { Root(store, ads) } }
         ads.start()
     }
