@@ -351,6 +351,24 @@ fun GameScreen(g: GameState, store: Store, key: String, home: () -> Unit, next: 
         Spacer(Modifier.weight(1f))
     }
 
+    if (g.chooseCell >= 0) {
+        val ci = g.chooseCell
+        AlertDialog(
+            onDismissRequest = { g.chooseCell = -1 }, containerColor = Panel,
+            title = { Text("Welche Zahl gehört hierher?", color = Gold) },
+            text = {
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    (1..9).filter { g.notes[ci] and (1 shl it) != 0 }.forEach { d ->
+                        Button(onClick = { g.placeNote(ci, d) }, colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = OnAccent)) {
+                            Text("$d", fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { g.chooseCell = -1 }) { Text("Abbrechen", color = Ink) } }
+        )
+    }
     if (menu) {
         AlertDialog(
             onDismissRequest = { menu = false }, containerColor = Panel,
@@ -436,12 +454,20 @@ private fun Board(g: GameState) {
     Canvas(
         Modifier.fillMaxWidth().aspectRatio(1f).background(if (Palettes.cur.tiles) Palettes.cur.boardBg else Panel)
             .pointerInput(Unit) {
-                detectTapGestures { o ->
-                    val cs = size.width / 9f
-                    val c = (o.x / cs).toInt().coerceIn(0, 8); val r = (o.y / cs).toInt().coerceIn(0, 8)
-                    Sfx.click()
-                    g.tapCell(r * 9 + c)
-                }
+                detectTapGestures(
+                    onLongPress = { o ->
+                        val cs = size.width / 9f
+                        val c = (o.x / cs).toInt().coerceIn(0, 8); val r = (o.y / cs).toInt().coerceIn(0, 8)
+                        Sfx.click()
+                        g.longPress(r * 9 + c)
+                    },
+                    onTap = { o ->
+                        val cs = size.width / 9f
+                        val c = (o.x / cs).toInt().coerceIn(0, 8); val r = (o.y / cs).toInt().coerceIn(0, 8)
+                        Sfx.click()
+                        g.tapCell(r * 9 + c)
+                    }
+                )
             }
     ) {
         val cs = size.width / 9f

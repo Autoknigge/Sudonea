@@ -20,6 +20,8 @@ class GameState(val grid: IntArray, val solution: IntArray, val level: Level, va
     var won by mutableStateOf(false)
     var hint by mutableStateOf<HintInfo?>(null)
     var paused by mutableStateOf(false)
+    /** Feld, in dem die gewünschte Notiz zum Eintrag gewählt wird (mehrere Notizen). */
+    var chooseCell by mutableIntStateOf(-1)
     /** Hervorgehobene Ziffer (alle gleichen Zahlen und Notizen leuchten) und Ziffer-zuerst-Modus. */
     var hd by mutableIntStateOf(0)
     var digitFirst by mutableStateOf(false)
@@ -63,6 +65,30 @@ class GameState(val grid: IntArray, val solution: IntArray, val level: Level, va
         sel = i
         digitFirst = false
         hd = vals[i]
+    }
+
+    /** Langes Drücken auf ein Feld mit Notizen: aus der Notiz wird ein Eintrag. */
+    fun longPress(i: Int) {
+        if (paused || won || isGiven(i) || vals[i] != 0) return
+        sel = i
+        val n = notes[i]
+        val ds = (1..9).filter { n and (1 shl it) != 0 }
+        when {
+            ds.isEmpty() -> return
+            hd != 0 && hd in ds -> placeNote(i, hd)
+            ds.size == 1 -> placeNote(i, ds[0])
+            else -> chooseCell = i
+        }
+    }
+
+    fun placeNote(i: Int, d: Int) {
+        sel = i
+        chooseCell = -1
+        val nm = noteMode
+        noteMode = false
+        enter(d)
+        noteMode = nm
+        hd = d
     }
 
     /** Zifferntaste: trägt ein, wenn ein Feld gewählt ist, sonst Ziffer-zuerst-Modus. */
