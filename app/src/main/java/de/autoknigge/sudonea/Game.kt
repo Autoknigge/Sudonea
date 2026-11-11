@@ -71,6 +71,8 @@ class GameState(val grid: IntArray, val solution: IntArray, val level: Level, va
     fun longPress(i: Int) {
         if (paused || won || isGiven(i) || vals[i] != 0) return
         sel = i
+        // Zahl ist vorgewählt: langes Drücken setzt sie direkt als Eintrag, auch ohne vorherige Notiz
+        if (digitFirst && hd != 0) { placeNote(i, hd); return }
         val n = notes[i]
         val ds = (1..9).filter { n and (1 shl it) != 0 }
         when {

@@ -50,6 +50,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.toArgb
@@ -115,6 +116,37 @@ private sealed interface Screen {
     data class Play(val game: GameState, val key: String) : Screen
 }
 
+/** Hintergrund mit deutlichem Verlauf: oben links hell, unten rechts dunkel. */
+fun gradBg(c: Color, light: Boolean): Brush = Brush.linearGradient(
+    listOf(androidx.compose.ui.graphics.lerp(c, Color.White, if (light) 0.20f else 0.16f), c, androidx.compose.ui.graphics.lerp(c, Color.Black, if (light) 0.22f else 0.5f)),
+    start = Offset.Zero, end = Offset.Infinite
+)
+
+/** Kachelfläche mit Verlauf von oben links (hell) nach unten rechts (dunkel). */
+fun tileBrush(c: Color, darken: Float = 0.3f): Brush = Brush.linearGradient(
+    listOf(androidx.compose.ui.graphics.lerp(c, Color.White, 0.22f), c, androidx.compose.ui.graphics.lerp(c, Color.Black, darken)),
+    start = Offset.Zero, end = Offset.Infinite
+)
+
+/** 3D-Rand: oben links Lichtkante, unten rechts Schattenkante. */
+fun Modifier.bevel(shape: androidx.compose.ui.graphics.Shape): Modifier = this.border(
+    1.5.dp, Brush.linearGradient(listOf(Color.White.copy(alpha = 0.6f), Color.Transparent, Color.Black.copy(alpha = 0.5f)), start = Offset.Zero, end = Offset.Infinite), shape
+)
+
+@Composable
+private fun HomeTile(text: String, sub: String?, color: Color, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(30.dp)
+    Box(
+        Modifier.fillMaxWidth().height(60.dp).clip(shape).background(tileBrush(color, 0.28f)).bevel(shape).clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(text, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1A0E00))
+            if (sub != null) Text(sub, fontSize = 12.sp, color = Color(0xFF1A0E00))
+        }
+    }
+}
+
 fun fmtTime(s: Int) = "%d:%02d".format(s / 60, s % 60)
 
 @Composable
@@ -155,7 +187,7 @@ fun Root(store: Store, ads: AdsController) {
         }
     }
 
-    Column(Modifier.fillMaxSize().background(Forest).statusBarsPadding()) {
+    Column(Modifier.fillMaxSize().background(gradBg(Forest, Palettes.cur.light)).statusBarsPadding()) {
         Box(Modifier.weight(1f)) {
             when (val s = screen) {
                 Screen.Home -> HomeScreen(store, busy, ::start, ::resume, { screen = Screen.Stats }, { screen = Screen.Info }, { musicOpen = true })
@@ -192,23 +224,23 @@ fun HomeScreen(store: Store, busy: Boolean, start: (Level, String?) -> Unit, res
     var del by remember { mutableStateOf<GameState?>(null) }
     val open = remember(refresh) { store.gameIds().mapNotNull { store.loadGame(it) } }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Image(painterResource(R.drawable.logo_header), null, Modifier.fillMaxWidth().height(130.dp), contentScale = ContentScale.Fit)
-        if (busy) Text("Rätsel wird erstellt …", color = Gold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
-        GoldButton(
-            "★ Tagesrätsel", if (done) "heute gelöst ✓" + (if (streak > 0) " · Serie $streak" else "")
-            else "für alle gleich" + (if (streak > 0) " · Serie $streak" else "")
-        ) { start(Level.EASY, today) }
-        Level.values().forEach { l ->
-            OutlinedButton(
-                onClick = { start(l, null) }, modifier = Modifier.fillMaxWidth().height(52.dp),
-                shape = RoundedCornerShape(26.dp), border = androidx.compose.foundation.BorderStroke(1.5.dp, Gold)
-            ) { Text(l.label + "  ·  neues Rätsel", color = Ink, fontSize = 16.sp) }
+        Box(Modifier.fillMaxWidth().height(130.dp)) {
+            Image(painterResource(R.drawable.logo_header), null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+            Text(BuildConfig.VERSION_NAME, color = Color(0xE6FFFFFF), fontSize = 11.sp, modifier = Modifier.align(Alignment.TopEnd).padding(top = 4.dp, end = 6.dp))
         }
+        if (busy) Text("Rätsel wird erstellt …", color = Gold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+        val c0 = Color(0xFFEE9F27); val c1 = Color(0xFFDC6601)
+        fun tileColor(i: Int) = androidx.compose.ui.graphics.lerp(c0, c1, i / 5f)
+        HomeTile(
+            "★ Tagesrätsel", if (done) "heute gelöst ✓" + (if (streak > 0) " · Serie $streak" else "")
+            else "für alle gleich" + (if (streak > 0) " · Serie $streak" else ""), tileColor(0)
+        ) { start(Level.EASY, today) }
+        Level.values().forEachIndexed { i, l -> HomeTile(l.label, "neues Rätsel", tileColor(i + 1)) { start(l, null) } }
         if (open.isNotEmpty()) {
             Text("Angefangene Rätsel", color = Gold, fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(top = 8.dp))
             open.forEach { g ->
                 Row(
-                    Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Panel).clickable { resume(g) }.padding(start = 14.dp),
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(tileBrush(Panel, 0.35f)).bevel(RoundedCornerShape(14.dp)).clickable { resume(g) }.padding(start = 14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(Modifier.weight(1f).padding(vertical = 10.dp)) {
@@ -242,13 +274,13 @@ fun StatsScreen(store: Store, back: () -> Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text("Statistik", fontSize = 26.sp, color = Gold, fontWeight = FontWeight.Bold)
         Level.values().forEach { l ->
-            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Panel).padding(16.dp)) {
+            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(tileBrush(Panel, 0.35f)).bevel(RoundedCornerShape(16.dp)).padding(16.dp)) {
                 Text(l.label, color = Gold, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 Text("Gelöst: ${store.won(l)} von ${store.played(l)} begonnen", color = Ink)
                 Text("Bestzeit (ohne Tipp): " + (store.best(l).takeIf { it > 0 }?.let { fmtTime(it) } ?: "–"), color = Ink)
             }
         }
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Panel).padding(16.dp)) {
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(tileBrush(Panel, 0.35f)).bevel(RoundedCornerShape(16.dp)).padding(16.dp)) {
             Text("Tagesrätsel", color = Gold, fontWeight = FontWeight.Bold, fontSize = 18.sp)
             Text("Gelöst: ${store.dailyCount()}", color = Ink)
             Text("Aktuelle Serie: ${store.streak()} Tage · Beste Serie: ${store.bestStreak()}", color = Ink)
@@ -258,7 +290,7 @@ fun StatsScreen(store: Store, back: () -> Unit) {
         Text("Bearbeitete Rätsel", color = Gold, fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(top = 8.dp))
         if (hist.isEmpty()) Text("Noch keine gelösten Rätsel.", color = Muted)
         hist.forEachIndexed { i, h ->
-            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Panel).padding(start = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(tileBrush(Panel, 0.35f)).bevel(RoundedCornerShape(14.dp)).padding(start = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f).padding(vertical = 8.dp)) {
                     Text((if (h.daily != null) "★ Tagesrätsel ${h.daily}" else (h.level?.label ?: "") + " #" + h.number), color = Ink, fontWeight = FontWeight.Bold)
                     Text("${h.date} · ${fmtTime(h.seconds)} · Fehler ${h.mistakes} · Tipps ${h.hints}", color = Muted, fontSize = 12.sp)
@@ -317,7 +349,7 @@ fun GameScreen(g: GameState, store: Store, key: String, home: () -> Unit, next: 
             Board(g)
             if (g.paused) {
                 Box(Modifier.matchParentSize().background(Forest).clickable { g.paused = false }, contentAlignment = Alignment.Center) {
-                    Text("Pause\nTippen zum Weiterspielen", color = Gold, fontSize = 20.sp, textAlign = TextAlign.Center)
+                    Text("▶\nWeiter", color = Gold, fontSize = 40.sp, textAlign = TextAlign.Center, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -438,8 +470,8 @@ private fun Pad(g: GameState, onHint: () -> Unit, onCheck: () -> Unit) {
                     0 -> Key(Modifier.weight(1f), on = g.noteMode, label = "✎") { g.noteMode = !g.noteMode }
                     1 -> Key(Modifier.weight(1f), label = "⌫") { g.erase() }
                     else -> Row(Modifier.weight(1f)) {
-                        Key(Modifier.weight(1f), label = "✓") { onCheck() }
-                        Key(Modifier.weight(1f), label = "⏸") { g.paused = true }
+                        Key(Modifier.weight(1f), label = if (g.paused) "▶" else "✓") { if (g.paused) g.paused = false else onCheck() }
+                        Key(Modifier.weight(1f), label = if (g.paused) "▶" else "⏸") { g.paused = !g.paused }
                     }
                 }
             }
@@ -459,7 +491,7 @@ private fun BoardCanvas(g: GameState) {
     val paint = remember { android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { textAlign = android.graphics.Paint.Align.CENTER } }
     val hintCells = g.hint?.cells ?: emptyList()
     Canvas(
-        Modifier.fillMaxWidth().aspectRatio(1f).background(if (Palettes.cur.tiles) Palettes.cur.boardBg else Panel)
+        Modifier.fillMaxWidth().aspectRatio(1f).then(if (Palettes.cur.tiles) Modifier.background(Palettes.cur.boardBg) else Modifier.background(tileBrush(Panel, 0.22f)))
             .pointerInput(Unit) {
                 detectTapGestures(
                     onLongPress = { o ->

@@ -26,7 +26,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = setting("VERSION_CODE", "1").toInt()
-        versionName = setting("VERSION_NAME", "1.0")
+        versionName = setting("VERSION_NAME", "1.1")
 
         manifestPlaceholders["admobAppId"] = admobAppId
         buildConfigField("String", "ADMOB_BANNER_ID", "\"$admobBannerId\"")
