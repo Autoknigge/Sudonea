@@ -321,6 +321,11 @@ fun GameScreen(g: GameState, store: Store, key: String, home: () -> Unit, next: 
                 }
             }
         }
+        Pad(g, onHint = { msg = null; g.giveHint() }, onCheck = {
+            g.hint = null
+            val w = g.wrongCount()
+            msg = if (w == 0) "Bis jetzt ist alles richtig." else if (w == 1) "Eine Zahl ist falsch (rot markiert)." else "$w Zahlen sind falsch (rot markiert)."
+        })
         val h = g.hint
         val note = msg
         Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.Top) {
@@ -343,11 +348,6 @@ fun GameScreen(g: GameState, store: Store, key: String, home: () -> Unit, next: 
                 }
             }
         }
-        Pad(g, onHint = { msg = null; g.giveHint() }, onCheck = {
-            g.hint = null
-            val w = g.wrongCount()
-            msg = if (w == 0) "Bis jetzt ist alles richtig." else if (w == 1) "Eine Zahl ist falsch (rot markiert)." else "$w Zahlen sind falsch (rot markiert)."
-        })
         Spacer(Modifier.weight(1f))
     }
 
@@ -392,7 +392,7 @@ fun GameScreen(g: GameState, store: Store, key: String, home: () -> Unit, next: 
 private fun Pad(g: GameState, onHint: () -> Unit, onCheck: () -> Unit) {
     @Composable
     fun Key(modifier: Modifier = Modifier, on: Boolean = false, enabled: Boolean = true, label: String, sub: String? = null, click: () -> Unit) {
-        Box(modifier.height(62.dp), contentAlignment = Alignment.Center) {
+        Box(modifier.height(58.dp), contentAlignment = Alignment.Center) {
             Box(
                 Modifier.size(54.dp).clip(androidx.compose.foundation.shape.CircleShape).background(if (on) Gold else Color.Transparent)
                     .clickable(enabled = enabled, onClick = { Sfx.click(); click() }),
@@ -459,14 +459,14 @@ private fun Board(g: GameState) {
             }
             if (pal.tiles) {
                 // Holzbrett: erhabene Steine (Vorgaben) und vertiefte Felder, größere Fuge zwischen den Blöcken
-                val small = cs * 0.045f; val big = cs * 0.10f
+                val small = cs * 0.018f; val big = cs * 0.05f
                 val l = c * cs + (if (c % 3 == 0) big else small); val rt = (c + 1) * cs - (if (c % 3 == 2) big else small)
                 val t = r * cs + (if (r % 3 == 0) big else small); val bt = (r + 1) * cs - (if (r % 3 == 2) big else small)
                 val tl = Offset(l, t); val sz = androidx.compose.ui.geometry.Size(rt - l, bt - t)
                 val rad = androidx.compose.ui.geometry.CornerRadius(cs * 0.12f)
                 val given = g.isGiven(i)
                 drawRoundRect(if (given) pal.tileGiven else pal.tileEmpty, tl, sz, rad)
-                drawRoundRect(pal.line.copy(alpha = if (given) 0.85f else 0.45f), tl, sz, rad, style = androidx.compose.ui.graphics.drawscope.Stroke(if (given) 1.6.dp.toPx() else 1.dp.toPx()))
+                drawRoundRect(pal.line.copy(alpha = if (given) 0.85f else 0.45f), tl, sz, rad, style = androidx.compose.ui.graphics.drawscope.Stroke(if (given) 0.8.dp.toPx() else 0.6.dp.toPx()))
                 if (bg != Color.Transparent) drawRoundRect(bg, tl, sz, rad)
             } else if (bg != Color.Transparent) drawRect(bg, Offset(c * cs, r * cs), androidx.compose.ui.geometry.Size(cs, cs))
         }
