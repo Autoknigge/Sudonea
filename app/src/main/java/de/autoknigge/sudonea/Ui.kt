@@ -51,6 +51,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
@@ -70,19 +71,18 @@ import java.time.LocalDate
 class Pal(
     val name: String, val bg: Color, val panel: Color, val peer: Color, val ink: Color, val muted: Color,
     val accent: Color, val onAccent: Color, val line: Color, val bad: Color, val light: Boolean,
-    val tiles: Boolean = false, val boardBg: Color = Color.Unspecified, val tileGiven: Color = Color.Unspecified, val tileEmpty: Color = Color.Unspecified, val userInk: Color = Color.Unspecified
+    val hl: Color = Color.Unspecified, val tiles: Boolean = false, val boardBg: Color = Color.Unspecified, val tileGiven: Color = Color.Unspecified, val tileEmpty: Color = Color.Unspecified, val userInk: Color = Color.Unspecified
 )
 
 object Palettes {
     val all = listOf(
         Pal("Wald", Color(0xFF0B2A16), Color(0xFF12381F), Color(0xFF1B4A2A), Color(0xFFF2F0E0), Color(0xFFD3DFD0), Color(0xFFE0B23E), Color(0xFF1A1400), Color(0xFFF2C94C), Color(0xFFFF6B5E), false),
-        Pal("Helles Holz", Color(0xFFF0DDB9), Color(0xFFE4C896), Color(0xFFEBD3A6), Color(0xFF2E1D0B), Color(0xFF5A4023), Color(0xFFA85F0C), Color(0xFFFFF8E8), Color(0xFF8A5A1F), Color(0xFFC2260F), true),
+        Pal("Helles Holz", Color(0xFFF0DDB9), Color(0xFFE4C896), Color(0xFFEBD3A6), Color(0xFF2E1D0B), Color(0xFF5A4023), Color(0xFFA85F0C), Color(0xFFFFF8E8), Color(0xFF8A5A1F), Color(0xFFC2260F), true, userInk = Color(0xFF0B4F8A), hl = Color(0xFFF2C230)),
         Pal("Nacht", Color(0xFF0E1A33), Color(0xFF172949), Color(0xFF20365E), Color(0xFFEEF2FB), Color(0xFFC3CEE6), Color(0xFFF2C94C), Color(0xFF1A1400), Color(0xFFF2C94C), Color(0xFFFF7A6B), false),
         Pal("Papier", Color(0xFFFAF9F2), Color(0xFFECEADD), Color(0xFFE2E7D8), Color(0xFF1B1B1B), Color(0xFF50504A), Color(0xFF1B6EB5), Color(0xFFFFFFFF), Color(0xFFB08A1E), Color(0xFFC2260F), true),
         Pal(
-            "Holzbrett", Color(0xFFC9A87C), Color(0xFFE6CC9A), Color(0xFFDDBF88), Color(0xFF5A3318), Color(0xFF6B4524), Color(0xFF8A4B12), Color(0xFFFFF8E8),
-            Color(0xFF3B2412), Color(0xFFC2260F), true,
-            tiles = true, boardBg = Color(0xFF4A2E1B), tileGiven = Color(0xFFF0D9A9), tileEmpty = Color(0xFFE6CB96), userInk = Color(0xFF9A6B3C)
+            "Holzbrett", Color(0xFFD47E30), Color(0xFFEFD9A8), Color(0xFFE3C48A), Color(0xFF2B1606), Color(0xFF4A2F14), Color(0xFF3B1F08), Color(0xFFFFF3DC),
+            Color(0xFF3B2412), Color(0xFFB3200C), true, userInk = Color(0xFF0B4F8A), hl = Color(0xFFF2C230)
         )
     )
     private val curState = mutableStateOf(all[0])
@@ -449,6 +449,13 @@ private fun Pad(g: GameState, onHint: () -> Unit, onCheck: () -> Unit) {
 
 @Composable
 private fun Board(g: GameState) {
+    val vc = androidx.compose.ui.platform.LocalViewConfiguration.current
+    val fast = remember(vc) { object : androidx.compose.ui.platform.ViewConfiguration by vc { override val longPressTimeoutMillis: Long get() = 230L } }
+    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalViewConfiguration provides fast) { BoardCanvas(g) }
+}
+
+@Composable
+private fun BoardCanvas(g: GameState) {
     val paint = remember { android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { textAlign = android.graphics.Paint.Align.CENTER } }
     val hintCells = g.hint?.cells ?: emptyList()
     Canvas(
@@ -474,12 +481,13 @@ private fun Board(g: GameState) {
         val sel = g.sel
         val selVal = g.hd
         val pal = Palettes.cur
+        val hlc = if (pal.hl.isSpecified) pal.hl else Gold
         for (i in 0 until 81) {
             val r = i / 9; val c = i % 9
             val bg = when {
-                i == sel -> Gold.copy(alpha = 0.55f)
-                i in hintCells -> Gold.copy(alpha = 0.30f)
-                selVal != 0 && (g.vals[i] == selVal || (g.vals[i] == 0 && g.notes[i] and (1 shl selVal) != 0)) -> Gold.copy(alpha = 0.35f)
+                i == sel -> hlc.copy(alpha = 0.60f)
+                i in hintCells -> hlc.copy(alpha = 0.35f)
+                selVal != 0 && (g.vals[i] == selVal || (g.vals[i] == 0 && g.notes[i] and (1 shl selVal) != 0)) -> hlc.copy(alpha = 0.40f)
                 sel >= 0 && (r == sel / 9 || c == sel % 9 || (r / 3 == sel / 9 / 3 && c / 3 == sel % 9 / 3)) -> Peer.copy(alpha = if (pal.tiles) 0.55f else 1f)
                 else -> Color.Transparent
             }
@@ -513,7 +521,7 @@ private fun Board(g: GameState) {
                 paint.color = when {
                     g.isWrong(i) -> Bad.toArgb()
                     g.isGiven(i) -> Ink.toArgb()
-                    pal.tiles -> pal.userInk.toArgb()
+                    pal.userInk.isSpecified -> pal.userInk.toArgb()
                     else -> Gold.toArgb()
                 }
                 cv.drawText("$v", c * cs + cs / 2, r * cs + cs / 2 + paint.textSize * 0.35f, paint)
