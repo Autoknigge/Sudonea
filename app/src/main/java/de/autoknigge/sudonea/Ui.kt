@@ -51,6 +51,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.toArgb
@@ -226,7 +227,7 @@ fun HomeScreen(store: Store, busy: Boolean, start: (Level, String?) -> Unit, res
     Column(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFF1F5A46), Color(0xFF123A2E), Color(0xFF06170F)), start = Offset.Zero, end = Offset.Infinite)).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Box(Modifier.fillMaxWidth().height(130.dp)) {
             Image(painterResource(R.drawable.logo_header), null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
-            Text(BuildConfig.VERSION_NAME, color = Color(0xE6FFFFFF), fontSize = 11.sp, modifier = Modifier.align(Alignment.TopEnd).padding(top = 4.dp, end = 6.dp))
+            Text(BuildConfig.VERSION_NAME, color = Color(0xE6FFFFFF), fontSize = 11.sp, modifier = Modifier.align(Alignment.TopEnd).zIndex(2f).padding(top = 4.dp, end = 38.dp))
         }
         if (busy) Text("Rätsel wird erstellt …", color = Gold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
         val scale = listOf(0xFFD24E01, 0xFFDC6601, 0xFFE27602, 0xFFE88504, 0xFFEC9006, 0xFFEE9F27, 0xFFF1B04C, 0xFFF5C77E).map { Color(it) }
@@ -517,7 +518,11 @@ private fun BoardCanvas(g: GameState) {
         val hlc = if (pal.hl.isSpecified) pal.hl else Gold
         for (i in 0 until 81) {
             val r = i / 9; val c = i % 9
+            val isVal = selVal != 0 && g.vals[i] == selVal
+            val isNote = selVal != 0 && g.vals[i] == 0 && g.notes[i] and (1 shl selVal) != 0
             val bg = when {
+                isVal -> Color(0xFFF1B04C)
+                isNote -> Color(0xFFDC6601)
                 i == sel -> hlc.copy(alpha = 0.60f)
                 i in hintCells -> hlc.copy(alpha = 0.35f)
                 selVal != 0 && (g.vals[i] == selVal || (g.vals[i] == 0 && g.notes[i] and (1 shl selVal) != 0)) -> hlc.copy(alpha = 0.40f)
@@ -552,6 +557,7 @@ private fun BoardCanvas(g: GameState) {
                 paint.textSize = cs * 0.62f
                 paint.isFakeBoldText = g.isGiven(i)
                 paint.color = when {
+                    selVal != 0 && v == selVal && !g.isWrong(i) -> 0xFF2A1500.toInt()
                     g.isWrong(i) -> Bad.toArgb()
                     g.isGiven(i) -> Ink.toArgb()
                     pal.userInk.isSpecified -> pal.userInk.toArgb()
@@ -561,7 +567,7 @@ private fun BoardCanvas(g: GameState) {
             } else if (g.notes[i] != 0) {
                 paint.textSize = cs * 0.30f
                 paint.isFakeBoldText = true
-                paint.color = Ink.toArgb()
+                paint.color = if (selVal != 0 && g.notes[i] and (1 shl selVal) != 0) 0xFFFFF4DC.toInt() else Ink.toArgb()
                 for (d in 1..9) if (g.notes[i] and (1 shl d) != 0) {
                     val nx = c * cs + cs / 6f * (1 + 2 * ((d - 1) % 3))
                     val ny = r * cs + cs / 6f * (1 + 2 * ((d - 1) / 3)) + paint.textSize * 0.35f
