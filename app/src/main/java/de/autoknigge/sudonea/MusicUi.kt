@@ -104,7 +104,7 @@ fun MusicDialog(onDismiss: () -> Unit) {
                 Text("Es läuft nur der Ton. Die Musik läuft weiter, wenn du eine andere App öffnest. In der Benachrichtigung steuerst du sie.", color = Muted, fontSize = 11.sp)
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Fertig", color = Gold) } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Fertig", color = BtnInk) } },
         dismissButton = { TextButton(onClick = { music.clear() }) { Text("Liste leeren", color = Ink) } }
     )
 }

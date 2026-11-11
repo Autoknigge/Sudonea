@@ -110,8 +110,6 @@ class GameState(val grid: IntArray, val solution: IntArray, val level: Level, va
         if (paused || won) return
         if (digitFirst && hd == d) { digitFirst = false; hd = 0; return }
         if (noteMode) { hd = d; digitFirst = true; sel = -1; return }
-        // Feld gewählt: Zahl eintragen, die Zahl bleibt danach für weitere Felder eingestellt
-        if (sel >= 0 && !isGiven(sel) && !digitFirst) { enter(d); hd = d; digitFirst = true; return }
         hd = d; digitFirst = true; sel = -1
     }
 

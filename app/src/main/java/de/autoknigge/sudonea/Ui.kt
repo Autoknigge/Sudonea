@@ -93,6 +93,8 @@ object Palettes {
         set(v) { curState.value = v }
 }
 
+/** Textfarbe für Dialog-Knöpfe: schwarz auf hellen Stilen (Helles Holz, Papier). */
+val BtnInk: Color get() = if (Palettes.cur.light) Color.Black else Gold
 val Forest: Color get() = Palettes.cur.bg
 val Panel: Color get() = Palettes.cur.panel
 val Peer: Color get() = Palettes.cur.peer
@@ -426,7 +428,7 @@ fun GameScreen(g: GameState, store: Store, key: String, home: () -> Unit, next: 
                     TextButton(onClick = { menu = false; store.saveGame(key, g); home() }) { Text("Zurück zum Menü", color = Ink) }
                 }
             },
-            confirmButton = { TextButton(onClick = { menu = false }) { Text("Schließen", color = Gold) } }
+            confirmButton = { TextButton(onClick = { menu = false }) { Text("Schließen", color = BtnInk) } }
         )
     }
     if (g.won) {
@@ -434,7 +436,7 @@ fun GameScreen(g: GameState, store: Store, key: String, home: () -> Unit, next: 
             onDismissRequest = {}, containerColor = Color.Transparent, modifier = Modifier.background(tileBrush(Panel, 0.55f), RoundedCornerShape(28.dp)).bevel(RoundedCornerShape(28.dp)),
             title = { Text("Geschafft! 🎉", color = Gold) },
             text = { Text("Zeit ${fmtTime(g.seconds)} · Fehler ${g.mistakes} · Tipps ${g.hints}", color = Ink) },
-            confirmButton = { TextButton(onClick = { next(g.level) }) { Text("Neues Rätsel", color = Gold) } },
+            confirmButton = { TextButton(onClick = { next(g.level) }) { Text("Neues Rätsel", color = BtnInk) } },
             dismissButton = { TextButton(onClick = home) { Text("Menü", color = Ink) } }
         )
     }
