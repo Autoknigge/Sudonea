@@ -8,6 +8,9 @@ import androidx.compose.runtime.mutableStateOf
 object Sfx {
     private val onState = mutableStateOf(true)
     val on: Boolean get() = onState.value
+    private val errState = mutableStateOf(false)
+    val showErr: Boolean get() = errState.value
+    fun setShowErr(v: Boolean) { errState.value = v; prefs?.edit()?.putBoolean("showerr", v)?.apply() }
     private var pool: SoundPool? = null
     private var id = 0
     private var prefs: android.content.SharedPreferences? = null
@@ -16,6 +19,7 @@ object Sfx {
         if (pool != null) return
         prefs = ctx.applicationContext.getSharedPreferences("sudonea", Context.MODE_PRIVATE)
         onState.value = prefs?.getBoolean("sfx", true) ?: true
+        errState.value = prefs?.getBoolean("showerr", false) ?: false
         pool = SoundPool.Builder().setMaxStreams(3).build().also { id = it.load(ctx.applicationContext, R.raw.click, 1) }
     }
 

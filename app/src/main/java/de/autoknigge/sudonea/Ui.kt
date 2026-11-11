@@ -358,12 +358,12 @@ fun GameScreen(g: GameState, store: Store, key: String, home: () -> Unit, next: 
         Pad(g, onHint = { msg = null; g.giveHint() }, onCheck = {
             g.hint = null
             val w = g.wrongCount()
-            msg = if (w == 0) "Bis jetzt ist alles richtig." else if (w == 1) "Eine Zahl ist falsch (rot markiert)." else "$w Zahlen sind falsch (rot markiert)."
+            msg = if (w == 0) "Bis jetzt ist alles richtig." else if (w == 1) "Eine Zahl ist falsch (bei Fehleranzeige rot markiert)." else "$w Zahlen sind falsch (bei Fehleranzeige rot markiert)."
         })
         val h = g.hint
         val note = msg
         Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.Top) {
-            Column {
+            if (Sfx.showErr) Column {
                 Text("Fehler: ${g.mistakes}", color = Ink, fontSize = 14.sp)
                 Text("Tipps: ${g.hints}", color = Ink, fontSize = 14.sp)
             }
@@ -418,6 +418,7 @@ fun GameScreen(g: GameState, store: Store, key: String, home: () -> Unit, next: 
                             ) { Text(p.name, color = p.ink, fontSize = 13.sp) }
                         }
                     }
+                    TextButton(onClick = { Sfx.setShowErr(!Sfx.showErr) }) { Text(if (Sfx.showErr) "⚠ Fehleranzeige: an" else "⚠ Fehleranzeige: aus", color = Ink) }
                     TextButton(onClick = { Sfx.set(!Sfx.on) }) { Text(if (Sfx.on) "🔊 Tastentöne: an" else "🔇 Tastentöne: aus", color = Ink) }
                     TextButton(onClick = { menu = false; music() }) { Text("🎵 Musik", color = Ink) }
                     TextButton(onClick = { g.autoNotes(); menu = false }) { Text("Alle Notizen eintragen", color = Ink) }
@@ -558,7 +559,7 @@ private fun BoardCanvas(g: GameState) {
                 paint.isFakeBoldText = g.isGiven(i)
                 paint.color = when {
                     selVal != 0 && v == selVal && !g.isWrong(i) -> 0xFF2A1500.toInt()
-                    g.isWrong(i) -> Bad.toArgb()
+                    Sfx.showErr && g.isWrong(i) -> Bad.toArgb()
                     g.isGiven(i) -> Ink.toArgb()
                     pal.userInk.isSpecified -> pal.userInk.toArgb()
                     else -> Gold.toArgb()
