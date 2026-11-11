@@ -69,6 +69,8 @@ class GameState(val grid: IntArray, val solution: IntArray, val level: Level, va
     fun tapCell(i: Int) {
         if (paused || won) return
         if (digitFirst && hd != 0 && noteMode && (isGiven(i) || vals[i] != 0)) return  // beim Notieren: belegte Felder ignorieren
+        // fest vorgegebene Zahl getippt: eingestellte Zahl wechselt zu dieser Zahl
+        if (digitFirst && hd != 0 && isGiven(i)) { sel = i; hd = vals[i]; return }
         if (digitFirst && hd != 0 && !isGiven(i)) { sel = i; enter(hd); return }
         sel = i
         digitFirst = false
@@ -107,7 +109,9 @@ class GameState(val grid: IntArray, val solution: IntArray, val level: Level, va
     fun tapDigit(d: Int) {
         if (paused || won) return
         if (digitFirst && hd == d) { digitFirst = false; hd = 0; return }
-        if (sel >= 0 && !isGiven(sel) && !digitFirst && !noteMode) { enter(d); hd = d; return }
+        if (noteMode) { hd = d; digitFirst = true; sel = -1; return }
+        // Feld gewählt: Zahl eintragen, die Zahl bleibt danach für weitere Felder eingestellt
+        if (sel >= 0 && !isGiven(sel) && !digitFirst) { enter(d); hd = d; digitFirst = true; return }
         hd = d; digitFirst = true; sel = -1
     }
 

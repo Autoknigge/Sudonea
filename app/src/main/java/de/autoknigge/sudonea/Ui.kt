@@ -523,7 +523,7 @@ private fun BoardCanvas(g: GameState) {
             val isNote = selVal != 0 && g.vals[i] == 0 && g.notes[i] and (1 shl selVal) != 0
             val bg = when {
                 isVal -> Color(0xFFF1B04C)
-                isNote -> Color(0xFFDC6601)
+                isNote -> Color(0xFFFC7F23)
                 i == sel -> hlc.copy(alpha = 0.60f)
                 i in hintCells -> hlc.copy(alpha = 0.35f)
                 selVal != 0 && (g.vals[i] == selVal || (g.vals[i] == 0 && g.notes[i] and (1 shl selVal) != 0)) -> hlc.copy(alpha = 0.40f)
@@ -568,7 +568,7 @@ private fun BoardCanvas(g: GameState) {
             } else if (g.notes[i] != 0) {
                 paint.textSize = cs * 0.30f
                 paint.isFakeBoldText = true
-                paint.color = if (selVal != 0 && g.notes[i] and (1 shl selVal) != 0) 0xFFFFF4DC.toInt() else Ink.toArgb()
+                paint.color = if (selVal != 0 && g.notes[i] and (1 shl selVal) != 0) 0xFF000000.toInt() else Ink.toArgb()
                 for (d in 1..9) if (g.notes[i] and (1 shl d) != 0) {
                     val nx = c * cs + cs / 6f * (1 + 2 * ((d - 1) % 3))
                     val ny = r * cs + cs / 6f * (1 + 2 * ((d - 1) / 3)) + paint.textSize * 0.35f
