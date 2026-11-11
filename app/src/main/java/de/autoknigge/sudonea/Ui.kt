@@ -261,7 +261,7 @@ fun HomeScreen(store: Store, busy: Boolean, start: (Level, String?) -> Unit, res
     }
     del?.let { g ->
         AlertDialog(
-            onDismissRequest = { del = null }, containerColor = Panel,
+            onDismissRequest = { del = null }, containerColor = Color.Transparent, modifier = Modifier.background(tileBrush(Panel, 0.55f), RoundedCornerShape(28.dp)).bevel(RoundedCornerShape(28.dp)),
             title = { Text("Rätsel löschen?", color = Gold) },
             text = { Text((if (g.daily != null) "Tagesrätsel ${g.daily}" else g.level.label + " #" + g.number) + " wird mit dem Spielstand entfernt.", color = Ink) },
             confirmButton = { TextButton(onClick = { store.deleteGame(g.id); del = null; refresh++ }) { Text("Löschen", color = Bad) } },
@@ -388,7 +388,7 @@ fun GameScreen(g: GameState, store: Store, key: String, home: () -> Unit, next: 
     if (g.chooseCell >= 0) {
         val ci = g.chooseCell
         AlertDialog(
-            onDismissRequest = { g.chooseCell = -1 }, containerColor = Panel,
+            onDismissRequest = { g.chooseCell = -1 }, containerColor = Color.Transparent, modifier = Modifier.background(tileBrush(Panel, 0.55f), RoundedCornerShape(28.dp)).bevel(RoundedCornerShape(28.dp)),
             title = { Text("Welche Zahl gehört hierher?", color = Gold) },
             text = {
                 Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -405,7 +405,7 @@ fun GameScreen(g: GameState, store: Store, key: String, home: () -> Unit, next: 
     }
     if (menu) {
         AlertDialog(
-            onDismissRequest = { menu = false }, containerColor = Panel,
+            onDismissRequest = { menu = false }, containerColor = Color.Transparent, modifier = Modifier.background(tileBrush(Panel, 0.55f), RoundedCornerShape(28.dp)).bevel(RoundedCornerShape(28.dp)),
             title = { Text("Menü", color = Gold) },
             text = {
                 Column {
@@ -430,7 +430,7 @@ fun GameScreen(g: GameState, store: Store, key: String, home: () -> Unit, next: 
     }
     if (g.won) {
         AlertDialog(
-            onDismissRequest = {}, containerColor = Panel,
+            onDismissRequest = {}, containerColor = Color.Transparent, modifier = Modifier.background(tileBrush(Panel, 0.55f), RoundedCornerShape(28.dp)).bevel(RoundedCornerShape(28.dp)),
             title = { Text("Geschafft! 🎉", color = Gold) },
             text = { Text("Zeit ${fmtTime(g.seconds)} · Fehler ${g.mistakes} · Tipps ${g.hints}", color = Ink) },
             confirmButton = { TextButton(onClick = { next(g.level) }) { Text("Neues Rätsel", color = Gold) } },

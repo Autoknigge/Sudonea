@@ -1,5 +1,8 @@
 package de.autoknigge.sudonea
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Color
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -60,7 +63,7 @@ fun MusicDialog(onDismiss: () -> Unit) {
     @Suppress("UNUSED_VARIABLE") val t = tick
     val cur = music.current()
     AlertDialog(
-        onDismissRequest = onDismiss, containerColor = Panel,
+        onDismissRequest = onDismiss, containerColor = Color.Transparent, modifier = Modifier.background(tileBrush(Panel, 0.55f), RoundedCornerShape(28.dp)).bevel(RoundedCornerShape(28.dp)),
         title = { Text("🎵 Musik", color = Gold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
