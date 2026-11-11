@@ -68,6 +68,7 @@ class GameState(val grid: IntArray, val solution: IntArray, val level: Level, va
 
     fun tapCell(i: Int) {
         if (paused || won) return
+        if (digitFirst && hd != 0 && noteMode && (isGiven(i) || vals[i] != 0)) return  // beim Notieren: belegte Felder ignorieren
         if (digitFirst && hd != 0 && !isGiven(i)) { sel = i; enter(hd); return }
         sel = i
         digitFirst = false
