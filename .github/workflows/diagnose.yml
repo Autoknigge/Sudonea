@@ -11,7 +11,9 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
-      - run: ./gradlew --no-daemon assembleRelease
+      - run: ./gradlew --no-daemon assembleRelease assembleDebug
+      - name: Klassenzuordnung
+        run: grep -n -B1 -A12 -E "\-> O2\.L:|^[^ ].* -> D\.j0:" app/build/outputs/mapping/release/mapping.txt | head -60
       - name: KVM aktivieren
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -22,7 +24,7 @@ jobs:
           api-level: 34
           arch: x86_64
           script: |
-            adb install -r app/build/outputs/apk/release/app-release.apk
+            adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb shell monkey -p de.autoknigge.sudonea -c android.intent.category.LAUNCHER 1
             sleep 25
             adb logcat -d -b crash
