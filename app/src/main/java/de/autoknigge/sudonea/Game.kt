@@ -59,6 +59,13 @@ class GameState(val grid: IntArray, val solution: IntArray, val level: Level, va
     }
 
     /** Tippen auf ein Feld: im Ziffer-zuerst-Modus wird die gewählte Zahl dort eingetragen. */
+    /** Stift an/aus: an + gewählte Zahl = Zahl bleibt als Notizzahl aktiv; aus beendet das. */
+    fun toggleNotes() {
+        noteMode = !noteMode
+        if (noteMode) { if (hd != 0) { digitFirst = true; sel = -1 } }
+        else if (digitFirst) { digitFirst = false; hd = 0 }
+    }
+
     fun tapCell(i: Int) {
         if (paused || won) return
         if (digitFirst && hd != 0 && !isGiven(i)) { sel = i; enter(hd); return }
@@ -99,7 +106,7 @@ class GameState(val grid: IntArray, val solution: IntArray, val level: Level, va
     fun tapDigit(d: Int) {
         if (paused || won) return
         if (digitFirst && hd == d) { digitFirst = false; hd = 0; return }
-        if (sel >= 0 && !isGiven(sel) && !digitFirst) { enter(d); hd = d; return }
+        if (sel >= 0 && !isGiven(sel) && !digitFirst && !noteMode) { enter(d); hd = d; return }
         hd = d; digitFirst = true; sel = -1
     }
 

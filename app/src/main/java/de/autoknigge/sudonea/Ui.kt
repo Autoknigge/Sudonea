@@ -469,7 +469,7 @@ private fun Pad(g: GameState, onHint: () -> Unit, onCheck: () -> Unit) {
                     Key(Modifier.weight(1f), on = g.digitFirst && g.hd == v, enabled = rest > 0, label = "$v", sub = if (rest in 1..8) "$rest" else null) { g.tapDigit(v) }
                 }
                 when (row) {
-                    0 -> Key(Modifier.weight(1f), on = g.noteMode, label = "✎") { g.noteMode = !g.noteMode }
+                    0 -> Key(Modifier.weight(1f), on = g.noteMode, label = "✎") { g.toggleNotes() }
                     1 -> Key(Modifier.weight(1f), label = "⌫") { g.erase() }
                     else -> Row(Modifier.weight(1f)) {
                         Key(Modifier.weight(1f), label = if (g.paused) "▶" else "✓") { if (g.paused) g.paused = false else onCheck() }
