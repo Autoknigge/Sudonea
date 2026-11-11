@@ -69,8 +69,10 @@ class GameState(val grid: IntArray, val solution: IntArray, val level: Level, va
 
     /** Langes Drücken auf ein Feld mit Notizen: aus der Notiz wird ein Eintrag. */
     fun longPress(i: Int) {
-        if (paused || won || isGiven(i) || vals[i] != 0) return
+        if (paused || won || isGiven(i)) return
         sel = i
+        // Eigene Zahl lange gedrückt: wieder löschen (Notizmodus bleibt unverändert)
+        if (vals[i] != 0) { erase(); return }
         // Zahl ist vorgewählt: langes Drücken setzt sie direkt als Eintrag, auch ohne vorherige Notiz
         if (digitFirst && hd != 0) { placeNote(i, hd); return }
         val n = notes[i]

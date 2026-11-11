@@ -134,15 +134,15 @@ fun Modifier.bevel(shape: androidx.compose.ui.graphics.Shape): Modifier = this.b
 )
 
 @Composable
-private fun HomeTile(text: String, sub: String?, color: Color, onClick: () -> Unit) {
+private fun HomeTile(text: String, sub: String?, color: Color, ink: Color, onClick: () -> Unit) {
     val shape = RoundedCornerShape(30.dp)
     Box(
         Modifier.fillMaxWidth().height(60.dp).clip(shape).background(tileBrush(color, 0.28f)).bevel(shape).clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1A0E00))
-            if (sub != null) Text(sub, fontSize = 12.sp, color = Color(0xFF1A0E00))
+            Text(text, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = ink)
+            if (sub != null) Text(sub, fontSize = 12.sp, color = ink)
         }
     }
 }
@@ -223,19 +223,20 @@ fun HomeScreen(store: Store, busy: Boolean, start: (Level, String?) -> Unit, res
     var refresh by remember { mutableStateOf(0) }
     var del by remember { mutableStateOf<GameState?>(null) }
     val open = remember(refresh) { store.gameIds().mapNotNull { store.loadGame(it) } }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFF1F5A46), Color(0xFF123A2E), Color(0xFF06170F)), start = Offset.Zero, end = Offset.Infinite)).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Box(Modifier.fillMaxWidth().height(130.dp)) {
             Image(painterResource(R.drawable.logo_header), null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
             Text(BuildConfig.VERSION_NAME, color = Color(0xE6FFFFFF), fontSize = 11.sp, modifier = Modifier.align(Alignment.TopEnd).padding(top = 4.dp, end = 6.dp))
         }
         if (busy) Text("Rätsel wird erstellt …", color = Gold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
-        val c0 = Color(0xFFEE9F27); val c1 = Color(0xFFDC6601)
-        fun tileColor(i: Int) = androidx.compose.ui.graphics.lerp(c0, c1, i / 5f)
+        val scale = listOf(0xFFD24E01, 0xFFDC6601, 0xFFE27602, 0xFFE88504, 0xFFEC9006, 0xFFEE9F27, 0xFFF1B04C, 0xFFF5C77E).map { Color(it) }
+        fun tileColor(i: Int): Color { val p = i / 5f * (scale.size - 1); val k = p.toInt().coerceAtMost(scale.size - 2); return androidx.compose.ui.graphics.lerp(scale[k], scale[k + 1], p - k) }
+        fun tileInk(i: Int) = if (i <= 2) Color.White else Color(0xFF3A1B00)
         HomeTile(
             "★ Tagesrätsel", if (done) "heute gelöst ✓" + (if (streak > 0) " · Serie $streak" else "")
-            else "für alle gleich" + (if (streak > 0) " · Serie $streak" else ""), tileColor(0)
+            else "für alle gleich" + (if (streak > 0) " · Serie $streak" else ""), tileColor(0), tileInk(0)
         ) { start(Level.EASY, today) }
-        Level.values().forEachIndexed { i, l -> HomeTile(l.label, "neues Rätsel", tileColor(i + 1)) { start(l, null) } }
+        Level.values().forEachIndexed { i, l -> HomeTile(l.label, "neues Rätsel", tileColor(i + 1), tileInk(i + 1)) { start(l, null) } }
         if (open.isNotEmpty()) {
             Text("Angefangene Rätsel", color = Gold, fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(top = 8.dp))
             open.forEach { g ->
