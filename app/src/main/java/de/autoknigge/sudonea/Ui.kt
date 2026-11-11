@@ -75,9 +75,9 @@ class Pal(
 
 object Palettes {
     val all = listOf(
-        Pal("Wald", Color(0xFF0B2A16), Color(0xFF12381F), Color(0xFF1B4A2A), Color(0xFFF2F0E0), Color(0xFFD3DFD0), Color(0xFFE0B23E), OnAccent, Color(0xFFF2C94C), Color(0xFFFF6B5E), false),
+        Pal("Wald", Color(0xFF0B2A16), Color(0xFF12381F), Color(0xFF1B4A2A), Color(0xFFF2F0E0), Color(0xFFD3DFD0), Color(0xFFE0B23E), Color(0xFF1A1400), Color(0xFFF2C94C), Color(0xFFFF6B5E), false),
         Pal("Helles Holz", Color(0xFFF0DDB9), Color(0xFFE4C896), Color(0xFFEBD3A6), Color(0xFF2E1D0B), Color(0xFF5A4023), Color(0xFFA85F0C), Color(0xFFFFF8E8), Color(0xFF8A5A1F), Color(0xFFC2260F), true),
-        Pal("Nacht", Color(0xFF0E1A33), Color(0xFF172949), Color(0xFF20365E), Color(0xFFEEF2FB), Color(0xFFC3CEE6), Color(0xFFF2C94C), OnAccent, Color(0xFFF2C94C), Color(0xFFFF7A6B), false),
+        Pal("Nacht", Color(0xFF0E1A33), Color(0xFF172949), Color(0xFF20365E), Color(0xFFEEF2FB), Color(0xFFC3CEE6), Color(0xFFF2C94C), Color(0xFF1A1400), Color(0xFFF2C94C), Color(0xFFFF7A6B), false),
         Pal("Papier", Color(0xFFFAF9F2), Color(0xFFECEADD), Color(0xFFE2E7D8), Color(0xFF1B1B1B), Color(0xFF50504A), Color(0xFF1B6EB5), Color(0xFFFFFFFF), Color(0xFFB08A1E), Color(0xFFC2260F), true),
         Pal(
             "Holzbrett", Color(0xFFC9A87C), Color(0xFFE6CC9A), Color(0xFFDDBF88), Color(0xFF5A3318), Color(0xFF6B4524), Color(0xFF8A4B12), Color(0xFFFFF8E8),
